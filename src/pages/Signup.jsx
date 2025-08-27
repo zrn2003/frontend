@@ -1,44 +1,34 @@
 import { useState } from 'react'
-import './LoginForm.css'
+import '../components/LoginForm.css'
 
-export default function LoginForm({ onSubmit }) {
+export default function Signup() {
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
   async function handleSubmit(e) {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setSuccess('')
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ name, email, password })
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'Login failed')
-      
-      // Store user info in localStorage for session management
-      localStorage.setItem('user', JSON.stringify(data.user))
-      
-      // Redirect based on role
-      if (data && data.user && data.user.role) {
-        const role = data.user.role.toLowerCase()
-        if (role === 'admin' || role === 'manager') {
-          window.location.assign('/icm')
-        } else if (role === 'viewer') {
-          window.location.assign('/opportunities')
-        } else {
-          window.location.assign('/icm') // Default fallback
-        }
-      }
-      
-      onSubmit && onSubmit({ email, password })
+      if (!res.ok) throw new Error(data.message || 'Signup failed')
+      setSuccess('Account created. You can now sign in.')
+      setName('')
+      setEmail('')
+      setPassword('')
     } catch (e) {
-      setError(e.message || 'Something went wrong. Please try again.')
+      setError(e.message || 'Signup failed')
     } finally {
       setLoading(false)
     }
@@ -50,7 +40,7 @@ export default function LoginForm({ onSubmit }) {
         <div className="brand-content">
           <div className="logo-mark" aria-hidden>ICM</div>
           <h2>Industry Collaboration Manager</h2>
-          <p>Coordinate with partners, streamline approvals, and accelerate partnerships.</p>
+          <p>Join the platform to collaborate with partners efficiently.</p>
           <ul className="highlights">
             <li>Secure role-based access</li>
             <li>Real-time partner updates</li>
@@ -61,10 +51,20 @@ export default function LoginForm({ onSubmit }) {
       <main className="form-panel">
         <div className="login-card">
           <div className="login-header">
-            <h1>Welcome back</h1>
-            <p className="subtitle">Sign in to continue</p>
+            <h1>Create your account</h1>
+            <p className="subtitle">Sign up to get started</p>
           </div>
           <form className="login-form" onSubmit={handleSubmit}>
+            <label className="field">
+              <span>Name</span>
+              <input
+                type="text"
+                placeholder="Your name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </label>
+
             <label className="field">
               <span>Email</span>
               <input
@@ -98,40 +98,21 @@ export default function LoginForm({ onSubmit }) {
             </label>
 
             {error && <div className="error" role="alert">{error}</div>}
+            {success && <div className="error" style={{ background: 'rgba(16,185,129,.15)', borderColor: 'rgba(16,185,129,.35)', color: '#bbf7d0' }}>{success}</div>}
 
             <button type="submit" className="submit" disabled={loading}>
-              {loading ? 'Signing in…' : 'Sign in'}
+              {loading ? 'Creating…' : 'Create account'}
             </button>
 
             <div className="meta">
-              <label className="remember">
-                <input type="checkbox" />
-                <span>Remember me</span>
-              </label>
-              <a className="link" href="#">Forgot password?</a>
+              <span>Already have an account?</span>
+              <a className="link" href="/">Sign in</a>
             </div>
           </form>
-          <div className="footer-note">
-            <span>New to ICM?</span>
-            <a className="link" href="/signup">Create an account</a>
-          </div>
-          
-          {/* Demo credentials */}
-          <div style={{ 
-            marginTop: 'var(--spacing-4)', 
-            padding: 'var(--spacing-3)', 
-            background: 'var(--surface)', 
-            borderRadius: 'var(--radius-md)',
-            fontSize: 'var(--font-size-sm)',
-            color: 'var(--text-muted)'
-          }}>
-            <strong>Demo Accounts:</strong><br/>
-            Admin: admin@trustteams.com / admin123<br/>
-            Manager: manager@trustteams.com / manager123<br/>
-            Viewer: viewer@trustteams.com / viewer123
-          </div>
         </div>
       </main>
     </div>
   )
 }
+
+
