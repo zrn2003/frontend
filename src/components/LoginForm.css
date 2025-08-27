@@ -3,28 +3,38 @@
   inset: 0;
   height: 100vh;
   width: 100vw;
-  display: flex;
-  align-items: stretch;
-  justify-content: stretch;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   background: linear-gradient(135deg, #0f172a 0%, #111827 35%, #1f2937 100%);
 }
 
-.login-card {
-  width: 100%;
-  height: 100%;
-  max-width: none;
-  background: #0b1220;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  border-left: none;
-  border-right: none;
-  border-bottom: none;
-  border-radius: 0;
-  padding: 32px;
-  box-shadow: none;
+.brand-panel {
+  position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
+  border-right: 1px solid rgba(255,255,255,.08);
+  background: radial-gradient(800px 400px at -10% -10%, rgba(59,130,246,.2), transparent),
+              radial-gradient(800px 400px at 110% 110%, rgba(99,102,241,.2), transparent);
+}
+
+.brand-content { max-width: 520px; padding: 40px; text-align: left; }
+.brand-content h2 { color: #e5e7eb; margin: 12px 0 8px; font-size: 28px; }
+.brand-content p { color: #a1a9b8; margin: 0 0 16px; }
+.highlights { color: #cbd5e1; margin: 0; padding-left: 18px; }
+.highlights li { margin: 6px 0; }
+.logo-mark { color: #60a5fa; font-weight: 800; font-size: 18px; letter-spacing: 6px; }
+
+.form-panel { display: flex; align-items: center; justify-content: center; }
+
+.login-card {
+  width: 100%;
+  max-width: 440px;
+  background: #0b1220;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 20px 50px rgba(0,0,0,.4);
 }
 
 .login-header h1 {
@@ -130,6 +140,11 @@
   align-items: center;
   gap: 8px;
   justify-content: center;
+}
+
+@media (max-width: 920px) {
+  .login-page { grid-template-columns: 1fr; }
+  .brand-panel { display: none; }
 }
 
 
