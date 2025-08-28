@@ -3,13 +3,16 @@ import { useParams } from 'react-router-dom'
 import { api } from '../config/api.js'
 
 export default function OpportunityForm({ mode = 'create' }) {
+  const [user, setUser] = useState(null)
+
   // Check if user is authenticated
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}')
-    if (!user.id) {
+    const userData = JSON.parse(localStorage.getItem('user') || '{}')
+    if (!userData.id) {
       window.location.href = '/'
       return
     }
+    setUser(userData)
   }, [])
 
   const { id } = useParams()
@@ -31,6 +34,13 @@ export default function OpportunityForm({ mode = 'create' }) {
           const data = await api.getOpportunity(id)
           
           const opportunity = data.opportunity
+          
+          // Check if user has permission to edit this opportunity
+          if (user && user.role !== 'admin' && opportunity.postedBy !== user.id) {
+            setError('You do not have permission to edit this opportunity')
+            return
+          }
+          
           setTitle(opportunity.title || '')
           setType(opportunity.type || 'other')
           setDescription(opportunity.description || '')

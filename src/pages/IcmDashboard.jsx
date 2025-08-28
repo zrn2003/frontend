@@ -2,13 +2,16 @@ import { useEffect, useState } from 'react'
 import { api } from '../config/api.js'
 
 export default function IcmDashboard() {
+  const [user, setUser] = useState(null)
+
   // Check if user is authenticated
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}')
-    if (!user.id) {
+    const userData = JSON.parse(localStorage.getItem('user') || '{}')
+    if (!userData.id) {
       window.location.href = '/'
       return
     }
+    setUser(userData)
   }, [])
 
   const [items, setItems] = useState([])
@@ -87,6 +90,18 @@ export default function IcmDashboard() {
     const daysUntil = getDaysUntilClosing(closingDate)
     if (daysUntil !== null && daysUntil <= 3) return 'var(--warning)'
     return 'var(--success)'
+  }
+
+  // Check if user can edit this opportunity
+  const canEdit = (opportunity) => {
+    if (!user) return false
+    return user.role === 'admin' || opportunity.postedBy === user.id
+  }
+
+  // Check if user can delete this opportunity
+  const canDelete = (opportunity) => {
+    if (!user) return false
+    return user.role === 'admin'
   }
 
   return (
@@ -256,32 +271,35 @@ export default function IcmDashboard() {
                           </p>
                         )}
                       </div>
-                      <div className="flex gap-2">
-                        <a href={`/opportunities/${o.id}/edit`} className="btn btn-secondary btn-sm">
-                          ✏️ Edit
-                        </a>
-                        <button 
-                          className="btn btn-danger btn-sm"
-                          onClick={async () => {
-                            if (confirm('Are you sure you want to delete this opportunity?')) {
-                              try {
-                                const user = JSON.parse(localStorage.getItem('user') || '{}')
-                                if (!user.id) {
-                                  alert('User not authenticated. Please login again.')
-                                  return
-                                }
+                                             <div className="flex gap-2">
+                         {canEdit(o) && (
+                           <a href={`/opportunities/${o.id}/edit`} className="btn btn-secondary btn-sm">
+                             ✏️ Edit
+                           </a>
+                         )}
+                         {canDelete(o) && (
+                           <button 
+                             className="btn btn-danger btn-sm"
+                             onClick={async () => {
+                               if (confirm('Are you sure you want to delete this opportunity?')) {
+                                 try {
+                                   if (!user.id) {
+                                     alert('User not authenticated. Please login again.')
+                                     return
+                                   }
 
-                                                                 await api.deleteOpportunity(o.id)
-                                 loadOpportunities() // Refresh the list
-                              } catch (err) {
-                                alert('Error deleting opportunity')
-                              }
-                            }
-                          }}
-                        >
-                          🗑️ Delete
-                        </button>
-                      </div>
+                                   await api.deleteOpportunity(o.id)
+                                   loadOpportunities() // Refresh the list
+                                 } catch (err) {
+                                   alert('Error deleting opportunity')
+                                 }
+                               }
+                             }}
+                           >
+                             🗑️ Delete
+                           </button>
+                         )}
+                       </div>
                     </div>
                   </div>
                 ))
