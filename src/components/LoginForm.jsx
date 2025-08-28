@@ -50,6 +50,19 @@ export default function LoginForm({ onSubmit }) {
       localStorage.setItem('userRole', backendRole)
       localStorage.setItem('userType', userType)
 
+      // Debug logging
+      console.log('Login successful - stored user data:', {
+        user: data.user,
+        backendRole,
+        userType,
+        localStorage: {
+          user: localStorage.getItem('user'),
+          userData: localStorage.getItem('userData'),
+          userRole: localStorage.getItem('userRole'),
+          userType: localStorage.getItem('userType')
+        }
+      })
+
       // Redirect
       if (backendRole === 'student') {
         navigate('/student')

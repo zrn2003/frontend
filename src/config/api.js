@@ -56,10 +56,20 @@ export const apiRequest = async (url, options = {}) => {
   }
 
   // Add user ID header if user is logged in
-  const user = JSON.parse(localStorage.getItem('user') || '{}')
-  if (user.id) {
-    defaultOptions.headers['x-user-id'] = user.id
+  const userData = JSON.parse(localStorage.getItem('userData') || localStorage.getItem('user') || '{}')
+  const userRole = localStorage.getItem('userRole')
+  
+  if (userData.id) {
+    defaultOptions.headers['x-user-id'] = userData.id
   }
+  
+  // Debug logging for authentication
+  console.log('API Auth Debug:', { 
+    hasUserData: !!userData.id, 
+    userId: userData.id, 
+    userRole,
+    url 
+  })
 
   try {
     const response = await fetch(url, {
@@ -163,6 +173,14 @@ export const api = {
 
   // Health
   health: () => apiRequest(API_ENDPOINTS.HEALTH),
+
+  // Test function to debug authentication
+  testAuth: () => {
+    const userData = JSON.parse(localStorage.getItem('userData') || localStorage.getItem('user') || '{}')
+    const userRole = localStorage.getItem('userRole')
+    console.log('Auth Debug:', { userData, userRole })
+    return { userData, userRole }
+  },
 
   // Student routes
   getStudentProfile: () => apiRequest(API_ENDPOINTS.STUDENT_PROFILE),
