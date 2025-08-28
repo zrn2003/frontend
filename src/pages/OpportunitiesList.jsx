@@ -104,7 +104,7 @@ export default function OpportunitiesList() {
   }
 
   // Check if user can delete this opportunity
-  const canDelete = (opportunity) => {
+  const canDelete = () => {
     if (!user) return false
     return user.role === 'admin'
   }
@@ -220,7 +220,7 @@ export default function OpportunitiesList() {
 
                                    await api.deleteOpportunity(o.id)
                                    loadOpportunities()
-                                 } catch (err) {
+                                 } catch {
                                    alert('Error deleting opportunity')
                                  }
                                }

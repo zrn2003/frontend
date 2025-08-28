@@ -3,7 +3,7 @@ import './UniversityDashboard.css'
 
 export default function UniversityDashboard() {
   const [search, setSearch] = useState('')
-  const [notifCount, setNotifCount] = useState(3)
+  const [notifCount] = useState(3)
   const [kpis, setKpis] = useState({ students: 0, faculty: 0, courses: 0, budget: 0, studentsTrend: 0, budgetTrend: 0 })
   const [students, setStudents] = useState([])
   const [departments, setDepartments] = useState([])

@@ -28,8 +28,8 @@ const StudentDashboard = () => {
     education: [],
     projects: []
   });
-  const [mentors, setMentors] = useState([]);
-  const [credentials, setCredentials] = useState([]);
+  const [mentors] = useState([]);
+  const [credentials] = useState([]);
   const [filters, setFilters] = useState({
     search: '',
     type: '',
@@ -51,7 +51,7 @@ const StudentDashboard = () => {
     const parsed = rawUser ? JSON.parse(rawUser) : null;
     const role = (parsed?.role || roleFromStorage || '').toLowerCase();
 
-    try { console.debug('[StudentDashboard gate]', { hasUser: !!parsed, role }); } catch {}
+    console.debug('[StudentDashboard gate]', { hasUser: !!parsed, role });
 
     if (!parsed || role !== 'student') {
       navigate('/login');
@@ -60,7 +60,7 @@ const StudentDashboard = () => {
 
     setUser(parsed);
     fetchOpportunities(true);
-    fetchProfile(parsed.id);
+    fetchProfile();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
@@ -80,16 +80,7 @@ const StudentDashboard = () => {
     return Math.round((score / total) * 100);
   };
 
-  const buildQuery = (resetOffset = false) => {
-    const params = new URLSearchParams();
-    if (filters.search) params.set('search', filters.search);
-    if (filters.status) params.set('status', filters.status);
-    if (filters.type) params.set('type', filters.type);
-    if (filters.location) params.set('location', filters.location);
-    params.set('limit', String(pagination.limit));
-    params.set('offset', String(resetOffset ? 0 : pagination.offset));
-    return params.toString();
-  };
+
 
   const fetchOpportunities = async (reset = false) => {
     try {
@@ -118,7 +109,7 @@ const StudentDashboard = () => {
     }
   };
 
-  const fetchProfile = async (userId) => {
+  const fetchProfile = async () => {
     try {
       const data = await api.getStudentProfile();
       const mapWithDefaults = (arr, key) => (arr || []).map(item => ({
@@ -208,11 +199,11 @@ const StudentDashboard = () => {
     setPortfolio(prev => ({ ...prev, [key]: prev[key].filter((_, i) => i !== idx) }));
   };
 
-  const handleApplyToOpportunity = async (opportunityId) => {
+  const handleApplyToOpportunity = async () => {
     alert('Application submitted!');
   };
 
-  const handleSaveOpportunity = async (opportunityId) => {
+  const handleSaveOpportunity = async () => {
     alert('Opportunity saved!');
   };
 
@@ -478,7 +469,7 @@ const StudentDashboard = () => {
                     </label>
                     <label style={{ width: '100%' }}>
                       <span className="mini-label">End</span>
-                      <input className="form-input" type="month" value={exp.end} onFocus={(e)=>{ if(!exp.end && !exp.current){ updateItem('experiences', i, { end: currentMonth() }); } }} onChange={(e)=>updateItem('experiences', i, { end: e.target.value, current: false })} disabled={exp.current} />
+                      <input className="form-input" type="month" value={exp.end} onFocus={()=>{ if(!exp.end && !exp.current){ updateItem('experiences', i, { end: currentMonth() }); } }} onChange={(e)=>updateItem('experiences', i, { end: e.target.value, current: false })} disabled={exp.current} />
                     </label>
                   </div>
                   <label className="inline-check">
@@ -514,7 +505,7 @@ const StudentDashboard = () => {
                     </label>
                     <label style={{ width: '100%' }}>
                       <span className="mini-label">End</span>
-                      <input className="form-input" type="month" value={ed.end} onFocus={(e)=>{ if(!ed.end && !ed.current){ updateItem('education', i, { end: currentMonth() }); } }} onChange={(e)=>updateItem('education', i, { end: e.target.value, current: false })} disabled={ed.current} />
+                      <input className="form-input" type="month" value={ed.end} onFocus={()=>{ if(!ed.end && !ed.current){ updateItem('education', i, { end: currentMonth() }); } }} onChange={(e)=>updateItem('education', i, { end: e.target.value, current: false })} disabled={ed.current} />
                     </label>
                   </div>
                   <label className="inline-check">

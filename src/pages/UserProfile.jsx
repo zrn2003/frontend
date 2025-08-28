@@ -38,7 +38,7 @@ export default function UserProfile() {
         newPassword: '',
         confirmPassword: ''
       })
-    } catch (e) {
+    } catch {
       setError('Failed to load user profile')
     } finally {
       setLoading(false)

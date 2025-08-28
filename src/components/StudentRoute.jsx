@@ -8,7 +8,7 @@ const StudentRoute = ({ element }) => {
   const role = (storedRole || (storedUser?.role || '')).toLowerCase();
 
   // Debug once per render to verify gate inputs
-  try { console.debug('[StudentRoute]', { storedRole, role }); } catch {}
+  console.debug('[StudentRoute]', { storedRole, role });
 
   // If we positively know the session is student, allow
   if (role === 'student') {

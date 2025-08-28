@@ -89,23 +89,16 @@ export default function IcmDashboard() {
     return days
   }
 
-  // Get status badge color
-  const getStatusColor = (status, closingDate) => {
-    if (status === 'closed') return 'var(--error)'
-    if (closingDate && isExpired(closingDate)) return 'var(--error)'
-    const daysUntil = getDaysUntilClosing(closingDate)
-    if (daysUntil !== null && daysUntil <= 3) return 'var(--warning)'
-    return 'var(--success)'
-  }
+
 
   // Check if user can edit this opportunity
-  const canEdit = (opportunity) => {
+  const canEdit = (opp) => {
     if (!user) return false
-    return user.role === 'admin' || opportunity.postedBy === user.id
+    return user.role === 'admin' || opp.postedBy === user.id
   }
 
   // Check if user can delete this opportunity
-  const canDelete = (opportunity) => {
+  const canDelete = () => {
     if (!user) return false
     return user.role === 'admin'
   }
@@ -299,7 +292,7 @@ export default function IcmDashboard() {
 
                                    await api.deleteOpportunity(o.id)
                                    loadOpportunities() // Refresh the list
-                                 } catch (err) {
+                                 } catch {
                                    alert('Error deleting opportunity')
                                  }
                                }
