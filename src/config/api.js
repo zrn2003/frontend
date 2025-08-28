@@ -89,10 +89,29 @@ export const apiRequest = async (url, options = {}) => {
   })
 
   try {
-    const response = await fetch(url, {
-      ...defaultOptions,
+    // Ensure method is properly set
+    const finalOptions = {
+      method: options.method || 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      },
       ...options
+    }
+    
+    // Add user ID header if available
+    if (userId) {
+      finalOptions.headers['x-user-id'] = userId
+    }
+    
+    console.log('Final request options:', { 
+      url, 
+      method: finalOptions.method,
+      headers: finalOptions.headers,
+      hasBody: !!finalOptions.body
     })
+    
+    const response = await fetch(url, finalOptions)
 
     console.log('API Response:', { 
       url, 
