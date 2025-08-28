@@ -1,5 +1,13 @@
 // API Configuration
-const API_BASE_URL = '/api'
+// Use environment variable for production, fallback to proxy for development
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+
+// Debug logging for API configuration
+console.log('API Configuration:', {
+  VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+  API_BASE_URL,
+  NODE_ENV: import.meta.env.MODE
+})
 
 // API endpoints
 export const API_ENDPOINTS = {
@@ -15,12 +23,31 @@ export const API_ENDPOINTS = {
   OPPORTUNITY_AUDIT: (id) => `${API_BASE_URL}/opportunities/${id}/audit`,
   AUTO_CLOSE_EXPIRED: `${API_BASE_URL}/opportunities/auto-close-expired`,
   
+  // Student routes
+  STUDENT_PROFILE: `${API_BASE_URL}/student/profile`,
+  
+  // Academic routes
+  ACADEMIC_STUDENTS: `${API_BASE_URL}/academic/students`,
+  ACADEMIC_DELETE_STUDENT: (id) => `${API_BASE_URL}/academic/students/${id}`,
+  
+  // University routes
+  UNIVERSITY_STATS: `${API_BASE_URL}/university/stats`,
+  UNIVERSITY_STUDENTS: `${API_BASE_URL}/university/students`,
+  UNIVERSITY_DEPARTMENTS: `${API_BASE_URL}/university/departments`,
+  UNIVERSITY_COURSES: `${API_BASE_URL}/university/courses`,
+  UNIVERSITY_FINANCE: `${API_BASE_URL}/university/finance`,
+  UNIVERSITY_REPORTS: `${API_BASE_URL}/university/reports`,
+  UNIVERSITY_INSTITUTES: `${API_BASE_URL}/university/institutes`,
+  UNIVERSITY_INSTITUTE_DETAIL: (domain) => `${API_BASE_URL}/university/institutes/${domain}`,
+  
   // Health
   HEALTH: `${API_BASE_URL}/health`
 }
 
 // API utility functions
 export const apiRequest = async (url, options = {}) => {
+  console.log('API Request:', { url, method: options.method || 'GET' })
+  
   const defaultOptions = {
     headers: {
       'Content-Type': 'application/json',
@@ -34,18 +61,44 @@ export const apiRequest = async (url, options = {}) => {
     defaultOptions.headers['x-user-id'] = user.id
   }
 
-  const response = await fetch(url, {
-    ...defaultOptions,
-    ...options
-  })
+  try {
+    const response = await fetch(url, {
+      ...defaultOptions,
+      ...options
+    })
 
-  const data = await response.json()
+    console.log('API Response:', { 
+      url, 
+      status: response.status, 
+      statusText: response.statusText,
+      contentType: response.headers.get('content-type')
+    })
 
-  if (!response.ok) {
-    throw new Error(data.message || `HTTP error! status: ${response.status}`)
+    // Check if response has content before parsing JSON
+    const contentType = response.headers.get('content-type')
+    if (!contentType || !contentType.includes('application/json')) {
+      console.error('Non-JSON response:', { contentType, status: response.status })
+      throw new Error(`Expected JSON response but got ${contentType}`)
+    }
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      console.error('API Error:', { status: response.status, data })
+      throw new Error(data.message || `HTTP error! status: ${response.status}`)
+    }
+
+    return data
+  } catch (error) {
+    console.error('API Request Failed:', { url, error: error.message })
+    if (error.name === 'TypeError' && error.message.includes('JSON')) {
+      throw new Error('Server returned invalid response. Please check if the backend is running.')
+    }
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('Network error. Please check your internet connection and try again.')
+    }
+    throw error
   }
-
-  return data
 }
 
 // Specific API functions

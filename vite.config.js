@@ -9,12 +9,16 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
-    proxy: {
+    proxy: process.env.NODE_ENV === 'development' ? {
       '/api': {
         target: API_TARGET,
         changeOrigin: true,
         secure: false
       }
-    }
+    } : undefined
+  },
+  define: {
+    // Make environment variables available in the client
+    'process.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL)
   }
 })
