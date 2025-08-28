@@ -1078,3 +1078,207 @@ textarea:focus {
   gap: 8px;
   margin: 6px 0;
 }
+
+/* Enhance card transitions for a snappier feel */
+.opportunity-card,
+.mentor-card,
+.credential-card {
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+
+/* Keyboard accessibility: focus outlines */
+.btn:focus-visible,
+.link-chip:focus-visible,
+.tab-button:focus-visible,
+.form-input:focus-visible,
+.search-input:focus-visible,
+.specialization-filter:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.25);
+  border-color: #667eea;
+}
+
+/* Tabs: make hover a bit more responsive */
+.tab-button {
+  transition: transform .2s ease, box-shadow .2s ease, background .2s ease, color .2s ease;
+}
+
+/* Badges unified weight */
+.badge {
+  letter-spacing: .2px;
+}
+
+/* State hooks for loading/error areas */
+.tab-content[data-state="loading"],
+.tab-content[data-state="error"] {
+  min-height: 320px;
+}
+
+/* Focus ring for buttons inside card actions */
+.opp-actions .btn:focus-visible,
+.mentor-actions .btn:focus-visible,
+.credential-actions .btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.25);
+}
+
+/* Subtle hover on link chips */
+.link-chip {
+  transition: background .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+.link-chip:hover {
+  transform: translateY(-1px);
+}
+
+/* Reduce motion for users preferring it */
+@media (prefers-reduced-motion: reduce) {
+  .tab-button,
+  .opportunity-card,
+  .mentor-card,
+  .credential-card,
+  .btn,
+  .link-chip {
+    transition: none !important;
+  }
+}
+
+/* LinkedIn-like profile layout */
+.profile-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 24px;
+}
+
+.profile-left,
+.profile-right {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.li-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+}
+
+.li-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.li-title {
+  margin: 0;
+  color: #111827;
+  font-size: 1.1rem;
+}
+
+.li-links {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.li-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Responsive behavior for profile layout */
+@media (max-width: 1024px) {
+  .profile-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Animated header and greeting */
+.dashboard-header.animated {
+  position: relative;
+  overflow: hidden;
+}
+.dashboard-header.animated::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(1200px 300px at -10% 0%, rgba(255,255,255,0.15), transparent 60%),
+              radial-gradient(1200px 300px at 110% 20%, rgba(255,255,255,0.1), transparent 60%);
+  animation: wave 8s linear infinite;
+  pointer-events: none;
+}
+@keyframes wave {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(-2%); }
+  100% { transform: translateX(0); }
+}
+.header-greeting { display: flex; align-items: center; gap: 12px; }
+.greet-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: #fff; color: #4f46e5; display:flex; align-items:center; justify-content:center;
+  font-weight: 800;
+}
+
+/* Sticky tabs with animated underline */
+.dashboard-tabs.sticky { position: sticky; top: 0; z-index: 10; background: #f8fafc; padding: 10px 0; }
+.dashboard-tabs { position: relative; }
+.tab-underline {
+  position: absolute; bottom: 0; left: 0; height: 3px; width: 25%;
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  transition: transform .25s ease;
+}
+.tab-button { position: relative; }
+.tab-button.active:nth-child(1) ~ .tab-underline { transform: translateX(0%); }
+.tab-button.active:nth-child(2) ~ .tab-underline { transform: translateX(100%); }
+.tab-button.active:nth-child(3) ~ .tab-underline { transform: translateX(200%); }
+.tab-button.active:nth-child(4) ~ .tab-underline { transform: translateX(300%); }
+
+/* Company avatar in opportunity cards */
+.opp-meta { display:flex; align-items:center; gap:10px; margin-bottom: 10px; }
+.company-avatar { width:36px; height:36px; border-radius:50%; background:#eef2ff; color:#3730a3; display:flex; align-items:center; justify-content:center; font-weight:700; }
+
+/* Tilt hover */
+.tilt { transition: transform .2s ease, box-shadow .2s ease; }
+.tilt:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 18px 45px rgba(0,0,0,0.12); }
+
+/* CTA button variant for mentors */
+.btn-cta { background: linear-gradient(45deg, #10b981, #059669); color:#fff; }
+.btn-cta:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(16,185,129,0.25) }
+
+/* Colored stars */
+.stars-colored { color: #f59e0b; text-shadow: 0 0 8px rgba(245,158,11,0.25); }
+
+/* Progress bar */
+.progress { position: relative; background: #f3f4f6; border-radius: 999px; height: 10px; margin-top: 12px; }
+.progress-bar { height: 100%; background: linear-gradient(90deg, #4f46e5, #8b5cf6); border-radius: 999px; transition: width .3s ease; }
+.progress-text { display:block; font-size: 12px; color: #6b7280; margin-top: 6px; }
+
+/* Skeleton loaders */
+.fade-in { animation: fade .25s ease; }
+@keyframes fade { from { opacity: .7; transform: translateY(2px) } to { opacity: 1; transform: none } }
+.skeleton { border-radius: 8px; background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 37%, #f3f4f6 63%); background-size: 400% 100%; animation: shimmer 1.4s ease infinite; }
+.skeleton-title { height: 24px; width: 220px; margin-bottom: 16px; }
+.skeleton-row { height: 16px; width: 100%; margin-bottom: 12px; }
+@keyframes shimmer { 0% { background-position: 100% 0 } 100% { background-position: -100% 0 } }
+
+/* Collapsible filters */
+.filters-header { display:flex; align-items:center; justify-content: space-between; margin-bottom: 12px; }
+.filters-section.collapsed .filters-grid { display:none; }
+
+/* Dark mode support */
+:root .dark .student-dashboard { background: #0b1020; }
+:root .dark .tab-content, :root .dark .li-card, :root .dark .opportunity-card, :root .dark .mentor-card, :root .dark .credential-card { background: #10162b; border-color: #1f2a44; }
+:root .dark .header-greeting .greet-avatar { background:#111827; color:#a5b4fc; }
+:root .dark .dashboard-tabs.sticky { background:#0b1020; }
+:root .dark .profile-header-card { background:#10162b; border-color:#1f2a44; }
+:root .dark .form-input, :root .dark .search-input, :root .dark .specialization-filter { background:#0f1528; border-color:#1f2a44; color:#e5e7eb; }
+:root .dark .form-input::placeholder { color:#6b7280; }
+:root .dark .opp-description, :root .dark .mentor-background, :root .dark .credentials-info p { color:#cbd5e1; }
+
+/* Mobile: tabs scrollable */
+@media (max-width: 768px) {
+  .dashboard-tabs { overflow-x: auto; white-space: nowrap; padding-bottom: 6px; }
+  .tab-button { display: inline-flex; }
+  .tab-underline { width: 50%; }
+}

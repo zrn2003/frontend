@@ -10,6 +10,12 @@ import OpportunityForm from './pages/OpportunityForm'
 import UserProfile from './pages/UserProfile'
 import StudentRoute from './components/StudentRoute'
 import IcmRoute from './components/IcmRoute'
+import AcademicDashboard from './pages/AcademicDashboard'
+import AcademicRoute from './components/AcademicRoute'
+import UniversityDashboard from './pages/UniversityDashboard'
+import UniversityRoute from './components/UniversityRoute'
+import Institutes from './pages/Institutes'
+import InstituteDetail from './pages/InstituteDetail'
 
 function App() {
   return (
@@ -20,6 +26,10 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/icm" element={<IcmRoute element={<IcmDashboard />} />} />
         <Route path="/student" element={<StudentRoute element={<StudentDashboard />} />} />
+        <Route path="/academic" element={<AcademicRoute element={<AcademicDashboard />} />} />
+        <Route path="/university" element={<UniversityRoute element={<UniversityDashboard />} />} />
+        <Route path="/university/institutes" element={<UniversityRoute element={<Institutes />} />} />
+        <Route path="/university/institutes/:domain" element={<UniversityRoute element={<InstituteDetail />} />} />
         <Route path="/opportunities" element={<OpportunitiesList />} />
         <Route path="/opportunities/new" element={<OpportunityForm mode="create" />} />
         <Route path="/opportunities/:id/edit" element={<OpportunityForm mode="edit" />} />

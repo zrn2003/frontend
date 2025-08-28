@@ -1,0 +1,67 @@
+/* University Admin Styles */
+.uni-admin { display:grid; grid-template-columns: 260px 1fr; min-height:100vh; background:#f8fafc; font-family:'Inter',system-ui; }
+.uni-sidebar { background:#0f172a; color:#e2e8f0; padding:18px; }
+.uni-logo { font-size:1.1rem; margin-bottom:10px; }
+.nav-item { width:100%; text-align:left; padding:10px 12px; background:transparent; border:1px solid transparent; color:#cbd5e1; border-radius:10px; cursor:pointer; }
+.nav-item:hover { background:rgba(255,255,255,.06) }
+.nav-item.active { background:rgba(255,255,255,.12); color:#fff }
+
+.uni-content { padding:20px; }
+.uni-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.search-wrap input { width:380px; max-width:60vw; padding:10px 12px; border:2px solid #e2e8f0; border-radius:10px; background:#fff; }
+.header-actions { display:flex; align-items:center; gap:10px; }
+.icon-btn { position:relative; background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:8px 10px; }
+.badge { position:absolute; top:-6px; right:-6px; background:#ef4444; color:#fff; border-radius:999px; padding:2px 6px; font-size:12px; }
+.profile-menu { display:flex; align-items:center; gap:8px; background:#fff; border:1px solid #e5e7eb; border-radius:999px; padding:6px 10px; }
+.profile-menu .avatar { width:28px; height:28px; border-radius:50%; background:#eef2ff; color:#3730a3; display:flex; align-items:center; justify-content:center; font-weight:700; }
+
+.kpi-row { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:14px; margin-bottom:16px; }
+.kpi-card { background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:14px; box-shadow:0 8px 24px rgba(0,0,0,.06) }
+.kpi-top { display:flex; align-items:center; justify-content:space-between; color:#334155; }
+.delta.up { color:#16a34a } .delta.down { color:#dc2626 }
+.sparkline { height:36px; background:linear-gradient(90deg,#eef2ff,#e2e8f0); border-radius:8px; margin-top:8px; }
+
+.panel { background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:14px; box-shadow:0 8px 24px rgba(0,0,0,.06); margin-bottom:16px; }
+.panel-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.panel-actions { display:flex; gap:8px; }
+
+.dept-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:12px; }
+.dept-card { background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:12px; }
+.dept-title { font-weight:700; margin-bottom:6px; }
+.dept-meta { color:#64748b; margin-bottom:8px; }
+.dept-stats { display:flex; gap:10px; color:#334155; margin-bottom:8px; }
+
+.uni-table { width:100%; border-collapse: collapse; }
+.uni-table th, .uni-table td { padding:10px; border-bottom:1px solid #e5e7eb; text-align:left; }
+.status { padding:4px 10px; border-radius:999px; border:1px solid #e5e7eb; font-size:.8rem }
+.status.active { background:#dcfce7; color:#166534; border-color:#bbf7d0 }
+.status.dropout { background:#fee2e2; color:#991b1b; border-color:#fecaca }
+.status.alumni { background:#e2e8f0; color:#334155 }
+.perf, .progress { background:#f3f4f6; border-radius:999px; height:8px; overflow:hidden }
+.perf .bar, .progress .bar { height:8px; background:linear-gradient(90deg,#4f46e5,#8b5cf6) }
+
+.course-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:12px; }
+.course-card { background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:12px; }
+.course-title { font-weight:700; margin-bottom:4px }
+.course-meta { color:#64748b; margin-bottom:6px }
+.course-stats { color:#334155; margin-bottom:8px }
+.curriculum-map { height:50px; background:repeating-linear-gradient(90deg,#f3f4f6 0,#f3f4f6 10px,#eef2ff 10px,#eef2ff 20px); border-radius:10px }
+
+.finance-grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; align-items:start }
+.chart { background:#fff; border:1px solid #e5e7eb; border-radius:14px; height:180px; box-shadow:0 8px 24px rgba(0,0,0,.06) }
+.chart.pie { background: conic-gradient(#1e3a8a 0 25%, #f59e0b 0 50%, #10b981 0 70%, #6366f1 0 100%); }
+.chart.line { background: linear-gradient(180deg,#eef2ff 0,#fff 30%), repeating-linear-gradient(0deg,#e5e7eb 0,#e5e7eb 1px,transparent 1px,transparent 24px) }
+.alert { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; border-radius:12px; padding:10px; }
+
+.report-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px }
+.report-card { background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:16px; box-shadow:0 8px 24px rgba(0,0,0,.06) }
+.compliance { display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:10px }
+.checklist .task { display:flex; align-items:center; gap:8px; padding:6px 0 }
+.box { width:14px; height:14px; border-radius:4px; border:2px solid #94a3b8; display:inline-block }
+.box.done { background:#22c55e; border-color:#22c55e }
+
+/* Dark mode */
+:root .dark .uni-admin { background:#0b1020 }
+:root .dark .uni-sidebar { background:#0a0f1f }
+:root .dark .uni-content .panel, :root .dark .kpi-card, :root .dark .profile-menu, :root .dark .icon-btn { background:#10162b; border-color:#1f2a44; color:#e2e8f0 }
+:root .dark .search-wrap input { background:#0f1528; border-color:#1f2a44; color:#e2e8f0 }

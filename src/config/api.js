@@ -1,22 +1,22 @@
 // API Configuration
-const API_BASE_URL = 'https://trustteams-backend.vercel.app'
+const API_BASE_URL = '/api'
 
 // API endpoints
 export const API_ENDPOINTS = {
   // Authentication
-  LOGIN: `${API_BASE_URL}/api/auth/login`,
-  SIGNUP: `${API_BASE_URL}/api/auth/signup`,
-  PROFILE: `${API_BASE_URL}/api/auth/me`,
-  UPDATE_PROFILE: `${API_BASE_URL}/api/auth/profile`,
+  LOGIN: `${API_BASE_URL}/auth/login`,
+  SIGNUP: `${API_BASE_URL}/auth/signup`,
+  PROFILE: `${API_BASE_URL}/auth/me`,
+  UPDATE_PROFILE: `${API_BASE_URL}/auth/profile`,
   
   // Opportunities
-  OPPORTUNITIES: `${API_BASE_URL}/api/opportunities`,
-  OPPORTUNITY_BY_ID: (id) => `${API_BASE_URL}/api/opportunities/${id}`,
-  OPPORTUNITY_AUDIT: (id) => `${API_BASE_URL}/api/opportunities/${id}/audit`,
-  AUTO_CLOSE_EXPIRED: `${API_BASE_URL}/api/opportunities/auto-close-expired`,
+  OPPORTUNITIES: `${API_BASE_URL}/opportunities`,
+  OPPORTUNITY_BY_ID: (id) => `${API_BASE_URL}/opportunities/${id}`,
+  OPPORTUNITY_AUDIT: (id) => `${API_BASE_URL}/opportunities/${id}/audit`,
+  AUTO_CLOSE_EXPIRED: `${API_BASE_URL}/opportunities/auto-close-expired`,
   
   // Health
-  HEALTH: `${API_BASE_URL}/api/health`
+  HEALTH: `${API_BASE_URL}/health`
 }
 
 // API utility functions

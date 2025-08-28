@@ -35,6 +35,8 @@ const StudentDashboard = () => {
     location: '',
     status: 'open'
   });
+  const [showFilters, setShowFilters] = useState(true);
+  const [isDark, setIsDark] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -60,6 +62,22 @@ const StudentDashboard = () => {
     fetchProfile(parsed.id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
+
+  useEffect(() => {
+    document.body.classList.toggle('dark', isDark);
+    return () => document.body.classList.remove('dark');
+  }, [isDark]);
+
+  const computeProfileCompleteness = () => {
+    let score = 0; let total = 6;
+    if (portfolio.summary) score++;
+    if (portfolio.skills && portfolio.skills.length > 0) score++;
+    if (portfolio.experiences && portfolio.experiences.length > 0) score++;
+    if (portfolio.education && portfolio.education.length > 0) score++;
+    if (portfolio.projects && portfolio.projects.length > 0) score++;
+    if (portfolio.githubUrl || portfolio.linkedinUrl || portfolio.websiteUrl || portfolio.resumeUrl) score++;
+    return Math.round((score / total) * 100);
+  };
 
   const buildQuery = (resetOffset = false) => {
     const params = new URLSearchParams();
@@ -216,9 +234,15 @@ const StudentDashboard = () => {
   };
 
   const renderOpportunitiesTab = () => (
-    <div className="tab-content">
-      <div className="filters-section">
-        <h3>Find Opportunities</h3>
+    <div className="tab-content fade-in" data-state={isLoading ? 'loading' : (error ? 'error' : 'ready')}>
+      <div className={`filters-section ${showFilters ? '' : 'collapsed'}`}>
+        <div className="filters-header">
+          <h3>Find Opportunities</h3>
+          <div className="filters-actions">
+            <button className="btn btn-secondary" onClick={() => setShowFilters(v => !v)}>{showFilters ? 'Hide Filters' : 'Show Filters'}</button>
+          </div>
+        </div>
+        {showFilters && (
         <div className="filters-grid">
           <div className="filter-group">
             <label>Search</label>
@@ -227,6 +251,7 @@ const StudentDashboard = () => {
               value={filters.search}
               onChange={(e) => handleFilterChange('search', e.target.value)}
               placeholder="Keywords, title, description..."
+              aria-label="Search opportunities"
             />
           </div>
           <div className="filter-group">
@@ -234,6 +259,7 @@ const StudentDashboard = () => {
             <select
               value={filters.status}
               onChange={(e) => handleFilterChange('status', e.target.value)}
+              aria-label="Filter by status"
             >
               <option value="">Any</option>
               <option value="open">Open</option>
@@ -245,6 +271,7 @@ const StudentDashboard = () => {
             <select
               value={filters.type}
               onChange={(e) => handleFilterChange('type', e.target.value)}
+              aria-label="Filter by type"
             >
               <option value="">Any</option>
               <option value="internship">Internship</option>
@@ -260,15 +287,31 @@ const StudentDashboard = () => {
               value={filters.location}
               onChange={(e) => handleFilterChange('location', e.target.value)}
               placeholder="City, country, remote..."
+              aria-label="Filter by location"
             />
           </div>
           <div className="filter-group">
             <button className="btn btn-primary" onClick={applyFilters}>Apply Filters</button>
           </div>
         </div>
+        )}
       </div>
 
-      {opportunities.length === 0 ? (
+      {isLoading ? (
+        <div className="loading-container" role="status" aria-live="polite">
+          <div className="skeleton skeleton-title" />
+          <div className="skeleton skeleton-row" />
+          <div className="skeleton skeleton-row" />
+          <div className="skeleton skeleton-row" />
+        </div>
+      ) : error ? (
+        <div className="error-container" role="alert">
+          <div className="error-icon">⚠️</div>
+          <h3>Error Loading Opportunities</h3>
+          <p>{error}</p>
+          <button className="btn btn-primary" onClick={() => fetchOpportunities(true)}>Try Again</button>
+        </div>
+      ) : opportunities.length === 0 ? (
         <div className="no-opportunities">
           <div className="no-data-icon">🔍</div>
           <h3>No opportunities found</h3>
@@ -278,11 +321,18 @@ const StudentDashboard = () => {
         <>
           <div className="opportunities-grid">
             {opportunities.map(opp => (
-              <div key={opp.id} className="opportunity-card">
+              <div key={opp.id} className="opportunity-card tilt">
                 <div className="opp-header">
                   <h4>{opp.title}</h4>
+                  <div className="opp-badges">
+                    {opp.verified && <span className="badge verified" aria-label="Verified">✓ Verified</span>}
+                    {opp.highValue && <span className="badge high-value" aria-label="High value">⭐ High Value</span>}
+                  </div>
                 </div>
-                <p className="opp-company">{opp.postedByName || 'TrustTeams partner'}</p>
+                <div className="opp-meta">
+                  <div className="company-avatar" aria-hidden>{(opp.postedByName || 'T').charAt(0)}</div>
+                  <p className="opp-company">{opp.postedByName || 'TrustTeams partner'}</p>
+                </div>
                 <p className="opp-description">{opp.description}</p>
                 <div className="opp-details">
                   <span>📍 {opp.location || 'N/A'}</span>
@@ -290,18 +340,30 @@ const StudentDashboard = () => {
                   <span>📅 {opp.closingDate ? new Date(opp.closingDate).toLocaleDateString() : 'N/A'}</span>
                   <span>📌 {opp.status}</span>
                 </div>
+                {opp.requirements && (
+                  <div className="opp-requirements">
+                    <strong>Requirements:</strong>
+                    <div className="skills-tags">
+                      {opp.requirements.map((req, idx) => (
+                        <span key={idx} className="skill-tag">{req}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="opp-actions">
                   <button 
                     className="btn btn-primary"
                     onClick={() => handleApplyToOpportunity(opp.id)}
+                    title="Apply"
                   >
-                    Apply Now
+                    📩 Apply
                   </button>
                   <button 
                     className="btn btn-secondary"
                     onClick={() => handleSaveOpportunity(opp.id)}
+                    title="Save"
                   >
-                    Save
+                    ⭐ Save
                   </button>
                 </div>
               </div>
@@ -309,7 +371,7 @@ const StudentDashboard = () => {
           </div>
 
           {pagination.offset + pagination.limit < pagination.total && (
-            <div style={{ marginTop: 20, textAlign: 'center' }}>
+            <div className="load-more">
               <button className="btn btn-secondary" onClick={loadMore} disabled={isLoading}>
                 {isLoading ? 'Loading...' : 'Load More'}
               </button>
@@ -328,21 +390,29 @@ const StudentDashboard = () => {
       .slice(0, 2)
       .join('')
       .toUpperCase();
+    const completeness = computeProfileCompleteness();
     return (
-      <div className="profile-header-card">
-        <div className="profile-avatar">{initials}</div>
-        <div className="profile-meta">
-          <h2 className="profile-name">{user?.name || 'Student'}</h2>
-          <div className="profile-sub">{user?.email || ''}</div>
-          <div className="profile-tags">
-            <span className="tag tag-student">Student</span>
-          </div>
-          {portfolio.summary && <p className="profile-summary">{portfolio.summary}</p>}
-          <div className="profile-links">
-            {portfolio.githubUrl && <a className="link-chip" href={portfolio.githubUrl} target="_blank" rel="noreferrer">GitHub</a>}
-            {portfolio.linkedinUrl && <a className="link-chip" href={portfolio.linkedinUrl} target="_blank" rel="noreferrer">LinkedIn</a>}
-            {portfolio.websiteUrl && <a className="link-chip" href={portfolio.websiteUrl} target="_blank" rel="noreferrer">Website</a>}
-            {portfolio.resumeUrl && <a className="link-chip" href={portfolio.resumeUrl} target="_blank" rel="noreferrer">Resume</a>}
+      <div className="li-profile-wrap">
+        <div className="profile-banner" aria-hidden />
+        <div className="profile-header-card">
+          <div className="profile-avatar">{initials}</div>
+          <div className="profile-meta">
+            <h2 className="profile-name">{user?.name || 'Student'}</h2>
+            <div className="profile-sub">{user?.email || ''}</div>
+            <div className="profile-tags">
+              <span className="tag tag-student">Student</span>
+            </div>
+            {portfolio.summary && <p className="profile-summary">{portfolio.summary}</p>}
+            <div className="profile-links">
+              {portfolio.githubUrl && <a className="link-chip" href={portfolio.githubUrl} target="_blank" rel="noreferrer">GitHub</a>}
+              {portfolio.linkedinUrl && <a className="link-chip" href={portfolio.linkedinUrl} target="_blank" rel="noreferrer">LinkedIn</a>}
+              {portfolio.websiteUrl && <a className="link-chip" href={portfolio.websiteUrl} target="_blank" rel="noreferrer">Website</a>}
+              {portfolio.resumeUrl && <a className="link-chip" href={portfolio.resumeUrl} target="_blank" rel="noreferrer">Resume</a>}
+            </div>
+            <div className="progress">
+              <div className="progress-bar" style={{ width: `${completeness}%` }} />
+              <span className="progress-text">Profile completeness {completeness}%</span>
+            </div>
           </div>
         </div>
       </div>
@@ -351,166 +421,180 @@ const StudentDashboard = () => {
 
   const renderPortfolioTab = () => (
     <div className="tab-content">
-      <div className="portfolio-overview">
-        {renderProfileHeader()}
-        <div className="portfolio-header">
-          <h3>Edit Profile</h3>
-          <button className="btn btn-primary" onClick={saveProfile} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Profile'}
-          </button>
-        </div>
+      <div className="profile-layout">
+        {/* Left column: identity, about, links */}
+        <aside className="profile-left">
+          {renderProfileHeader()}
 
-        <div className="stat-card" style={{ marginBottom: 20 }}>
-          <h4>Summary</h4>
-          <textarea
-            className="form-input"
-            value={portfolio.summary}
-            onChange={(e) => setPortfolio(prev => ({ ...prev, summary: e.target.value }))}
-            placeholder="Brief summary about you, your goals and strengths"
-            rows={4}
-          />
-        </div>
-
-        <div className="stat-card" style={{ marginBottom: 20 }}>
-          <h4>Links</h4>
-          <div className="projects-list">
-            <input
+          <section className="li-card">
+            <h3 className="li-title">About</h3>
+            <textarea
               className="form-input"
-              placeholder="GitHub URL"
-              value={portfolio.githubUrl}
-              onChange={(e) => setPortfolio(prev => ({ ...prev, githubUrl: e.target.value }))}
+              value={portfolio.summary}
+              onChange={(e) => setPortfolio(prev => ({ ...prev, summary: e.target.value }))}
+              placeholder="Write a short bio that highlights your goals and strengths"
+              rows={5}
             />
-            <input
-              className="form-input"
-              placeholder="LinkedIn URL"
-              value={portfolio.linkedinUrl}
-              onChange={(e) => setPortfolio(prev => ({ ...prev, linkedinUrl: e.target.value }))}
-            />
-            <input
-              className="form-input"
-              placeholder="Personal Website URL"
-              value={portfolio.websiteUrl}
-              onChange={(e) => setPortfolio(prev => ({ ...prev, websiteUrl: e.target.value }))}
-            />
-            <input
-              className="form-input"
-              placeholder="Resume URL"
-              value={portfolio.resumeUrl}
-              onChange={(e) => setPortfolio(prev => ({ ...prev, resumeUrl: e.target.value }))}
-            />
-          </div>
-        </div>
+          </section>
 
-        <div className="stat-card" style={{ marginBottom: 20 }}>
-          <h4>Skills</h4>
-          <div className="skills-graph">
-            {(portfolio.skills || []).map(skill => (
-              <span key={skill} className="skill-badge" onClick={() => removeSkill(skill)} title="Remove">
-                {skill}
-              </span>
-            ))}
-          </div>
-          <div style={{ marginTop: 10 }}>
-            <input id="newSkill" className="form-input" placeholder="Add a skill and press Enter" onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                addSkill(e.currentTarget.value);
-                e.currentTarget.value = '';
-              }
-            }} />
-          </div>
-        </div>
+          <section className="li-card">
+            <h3 className="li-title">Links</h3>
+            <div className="li-links">
+              <input
+                className="form-input"
+                placeholder="GitHub URL"
+                value={portfolio.githubUrl}
+                onChange={(e) => setPortfolio(prev => ({ ...prev, githubUrl: e.target.value }))}
+              />
+              <input
+                className="form-input"
+                placeholder="LinkedIn URL"
+                value={portfolio.linkedinUrl}
+                onChange={(e) => setPortfolio(prev => ({ ...prev, linkedinUrl: e.target.value }))}
+              />
+              <input
+                className="form-input"
+                placeholder="Personal Website URL"
+                value={portfolio.websiteUrl}
+                onChange={(e) => setPortfolio(prev => ({ ...prev, websiteUrl: e.target.value }))}
+              />
+              <input
+                className="form-input"
+                placeholder="Resume URL"
+                value={portfolio.resumeUrl}
+                onChange={(e) => setPortfolio(prev => ({ ...prev, resumeUrl: e.target.value }))}
+              />
+            </div>
+          </section>
 
-        <div className="stat-card" style={{ marginBottom: 20 }}>
-          <h4>Experiences</h4>
-          <div className="projects-list">
-            {(portfolio.experiences || []).map((exp, i) => (
-              <div key={i} className="project-item">
-                <div className="grid-2">
-                  <input className="form-input" placeholder="Company" value={exp.company} onChange={(e)=>updateItem('experiences', i, { company: e.target.value })} />
-                  <input className="form-input" placeholder="Title" value={exp.title} onChange={(e)=>updateItem('experiences', i, { title: e.target.value })} />
-                </div>
-                <div className="grid-2">
-                  <label style={{ width: '100%' }}>
-                    <span className="mini-label">Start</span>
-                    <input className="form-input" type="month" value={exp.start} onChange={(e)=>updateItem('experiences', i, { start: e.target.value })} />
-                  </label>
-                  <label style={{ width: '100%' }}>
-                    <span className="mini-label">End</span>
-                    <input className="form-input" type="month" value={exp.end} onFocus={(e)=>{ if(!exp.end && !exp.current){ updateItem('experiences', i, { end: currentMonth() }); } }} onChange={(e)=>updateItem('experiences', i, { end: e.target.value, current: false })} disabled={exp.current} />
-                  </label>
-                </div>
-                <label className="inline-check">
-                  <input type="checkbox" checked={!!exp.current} onChange={(e)=>updateItem('experiences', i, { current: e.target.checked, end: e.target.checked ? '' : (exp.end || currentMonth()) })} />
-                  <span>Currently working here</span>
-                </label>
-                <textarea className="form-input" placeholder="Description" rows={3} value={exp.description} onChange={(e)=>updateItem('experiences', i, { description: e.target.value })} />
-                <div style={{ textAlign: 'right' }}>
-                  <button className="btn btn-secondary" onClick={()=>removeItem('experiences', i)}>Remove</button>
-                </div>
-              </div>
-            ))}
-            <button className="btn btn-secondary" onClick={()=>addItem('experiences', { ...emptyExperience })}>+ Add Experience</button>
+          <div className="li-actions">
+            <button className="btn btn-primary" onClick={saveProfile} disabled={saving}>
+              {saving ? 'Saving...' : 'Save Profile'}
+            </button>
           </div>
-        </div>
+        </aside>
 
-        <div className="stat-card" style={{ marginBottom: 20 }}>
-          <h4>Education</h4>
-          <div className="projects-list">
-            {(portfolio.education || []).map((ed, i) => (
-              <div key={i} className="project-item">
-                <input className="form-input" placeholder="School / University" value={ed.school} onChange={(e)=>updateItem('education', i, { school: e.target.value })} />
-                <div className="grid-2">
-                  <input className="form-input" placeholder="Degree" value={ed.degree} onChange={(e)=>updateItem('education', i, { degree: e.target.value })} />
-                  <input className="form-input" placeholder="Field of Study" value={ed.field} onChange={(e)=>updateItem('education', i, { field: e.target.value })} />
-                </div>
-                <div className="grid-2">
-                  <label style={{ width: '100%' }}>
-                    <span className="mini-label">Start</span>
-                    <input className="form-input" type="month" value={ed.start} onChange={(e)=>updateItem('education', i, { start: e.target.value })} />
+        {/* Right column: experiences, education, projects, skills */}
+        <main className="profile-right">
+          <section className="li-card">
+            <div className="li-card-header">
+              <h3 className="li-title">Experience</h3>
+              <button className="btn btn-secondary" onClick={()=>addItem('experiences', { ...emptyExperience })}>+ Add</button>
+            </div>
+            <div className="projects-list">
+              {(portfolio.experiences || []).map((exp, i) => (
+                <div key={i} className="project-item">
+                  <div className="grid-2">
+                    <input className="form-input" placeholder="Company" value={exp.company} onChange={(e)=>updateItem('experiences', i, { company: e.target.value })} />
+                    <input className="form-input" placeholder="Title" value={exp.title} onChange={(e)=>updateItem('experiences', i, { title: e.target.value })} />
+                  </div>
+                  <div className="grid-2">
+                    <label style={{ width: '100%' }}>
+                      <span className="mini-label">Start</span>
+                      <input className="form-input" type="month" value={exp.start} onChange={(e)=>updateItem('experiences', i, { start: e.target.value })} />
+                    </label>
+                    <label style={{ width: '100%' }}>
+                      <span className="mini-label">End</span>
+                      <input className="form-input" type="month" value={exp.end} onFocus={(e)=>{ if(!exp.end && !exp.current){ updateItem('experiences', i, { end: currentMonth() }); } }} onChange={(e)=>updateItem('experiences', i, { end: e.target.value, current: false })} disabled={exp.current} />
+                    </label>
+                  </div>
+                  <label className="inline-check">
+                    <input type="checkbox" checked={!!exp.current} onChange={(e)=>updateItem('experiences', i, { current: e.target.checked, end: e.target.checked ? '' : (exp.end || currentMonth()) })} />
+                    <span>Currently working here</span>
                   </label>
-                  <label style={{ width: '100%' }}>
-                    <span className="mini-label">End</span>
-                    <input className="form-input" type="month" value={ed.end} onFocus={(e)=>{ if(!ed.end && !ed.current){ updateItem('education', i, { end: currentMonth() }); } }} onChange={(e)=>updateItem('education', i, { end: e.target.value, current: false })} disabled={ed.current} />
-                  </label>
+                  <textarea className="form-input" placeholder="Description" rows={3} value={exp.description} onChange={(e)=>updateItem('experiences', i, { description: e.target.value })} />
+                  <div style={{ textAlign: 'right' }}>
+                    <button className="btn btn-secondary" onClick={()=>removeItem('experiences', i)}>Remove</button>
+                  </div>
                 </div>
-                <label className="inline-check">
-                  <input type="checkbox" checked={!!ed.current} onChange={(e)=>updateItem('education', i, { current: e.target.checked, end: e.target.checked ? '' : (ed.end || currentMonth()) })} />
-                  <span>Currently studying</span>
-                </label>
-                <textarea className="form-input" placeholder="Description" rows={3} value={ed.description} onChange={(e)=>updateItem('education', i, { description: e.target.value })} />
-                <div style={{ textAlign: 'right' }}>
-                  <button className="btn btn-secondary" onClick={()=>removeItem('education', i)}>Remove</button>
-                </div>
-              </div>
-            ))}
-            <button className="btn btn-secondary" onClick={()=>addItem('education', { ...emptyEducation })}>+ Add Education</button>
-          </div>
-        </div>
+              ))}
+            </div>
+          </section>
 
-        <div className="stat-card" style={{ marginBottom: 20 }}>
-          <h4>Projects</h4>
-          <div className="projects-list">
-            {(portfolio.projects || []).map((pr, i) => (
-              <div key={i} className="project-item">
-                <input className="form-input" placeholder="Project Name" value={pr.name} onChange={(e)=>updateItem('projects', i, { name: e.target.value })} />
-                <textarea className="form-input" placeholder="Description" rows={3} value={pr.description} onChange={(e)=>updateItem('projects', i, { description: e.target.value })} />
-                <input className="form-input" placeholder="Tech (comma separated)" value={(pr.tech || []).join(', ')} onChange={(e)=>updateItem('projects', i, { tech: e.target.value.split(',').map(s=>s.trim()).filter(Boolean) })} />
-                <input className="form-input" placeholder="Link (GitHub/Live)" value={pr.link} onChange={(e)=>updateItem('projects', i, { link: e.target.value })} />
-                <div style={{ textAlign: 'right' }}>
-                  <button className="btn btn-secondary" onClick={()=>removeItem('projects', i)}>Remove</button>
+          <section className="li-card">
+            <div className="li-card-header">
+              <h3 className="li-title">Education</h3>
+              <button className="btn btn-secondary" onClick={()=>addItem('education', { ...emptyEducation })}>+ Add</button>
+            </div>
+            <div className="projects-list">
+              {(portfolio.education || []).map((ed, i) => (
+                <div key={i} className="project-item">
+                  <input className="form-input" placeholder="School / University" value={ed.school} onChange={(e)=>updateItem('education', i, { school: e.target.value })} />
+                  <div className="grid-2">
+                    <input className="form-input" placeholder="Degree" value={ed.degree} onChange={(e)=>updateItem('education', i, { degree: e.target.value })} />
+                    <input className="form-input" placeholder="Field of Study" value={ed.field} onChange={(e)=>updateItem('education', i, { field: e.target.value })} />
+                  </div>
+                  <div className="grid-2">
+                    <label style={{ width: '100%' }}>
+                      <span className="mini-label">Start</span>
+                      <input className="form-input" type="month" value={ed.start} onChange={(e)=>updateItem('education', i, { start: e.target.value })} />
+                    </label>
+                    <label style={{ width: '100%' }}>
+                      <span className="mini-label">End</span>
+                      <input className="form-input" type="month" value={ed.end} onFocus={(e)=>{ if(!ed.end && !ed.current){ updateItem('education', i, { end: currentMonth() }); } }} onChange={(e)=>updateItem('education', i, { end: e.target.value, current: false })} disabled={ed.current} />
+                    </label>
+                  </div>
+                  <label className="inline-check">
+                    <input type="checkbox" checked={!!ed.current} onChange={(e)=>updateItem('education', i, { current: e.target.checked, end: e.target.checked ? '' : (ed.end || currentMonth()) })} />
+                    <span>Currently studying</span>
+                  </label>
+                  <textarea className="form-input" placeholder="Description" rows={3} value={ed.description} onChange={(e)=>updateItem('education', i, { description: e.target.value })} />
+                  <div style={{ textAlign: 'right' }}>
+                    <button className="btn btn-secondary" onClick={()=>removeItem('education', i)}>Remove</button>
+                  </div>
                 </div>
-              </div>
-            ))}
-            <button className="btn btn-secondary" onClick={()=>addItem('projects', { ...emptyProject })}>+ Add Project</button>
-          </div>
-        </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="li-card">
+            <div className="li-card-header">
+              <h3 className="li-title">Projects</h3>
+              <button className="btn btn-secondary" onClick={()=>addItem('projects', { ...emptyProject })}>+ Add</button>
+            </div>
+            <div className="projects-list">
+              {(portfolio.projects || []).map((pr, i) => (
+                <div key={i} className="project-item">
+                  <input className="form-input" placeholder="Project Name" value={pr.name} onChange={(e)=>updateItem('projects', i, { name: e.target.value })} />
+                  <textarea className="form-input" placeholder="Description" rows={3} value={pr.description} onChange={(e)=>updateItem('projects', i, { description: e.target.value })} />
+                  <input className="form-input" placeholder="Tech (comma separated)" value={(pr.tech || []).join(', ')} onChange={(e)=>updateItem('projects', i, { tech: e.target.value.split(',').map(s=>s.trim()).filter(Boolean) })} />
+                  <input className="form-input" placeholder="Link (GitHub/Live)" value={pr.link} onChange={(e)=>updateItem('projects', i, { link: e.target.value })} />
+                  <div style={{ textAlign: 'right' }}>
+                    <button className="btn btn-secondary" onClick={()=>removeItem('projects', i)}>Remove</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="li-card">
+            <div className="li-card-header">
+              <h3 className="li-title">Skills</h3>
+            </div>
+            <div className="skills-graph">
+              {(portfolio.skills || []).map(skill => (
+                <span key={skill} className="skill-badge" onClick={() => removeSkill(skill)} title="Remove">
+                  {skill}
+                </span>
+              ))}
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <input id="newSkill" className="form-input" placeholder="Add a skill and press Enter" onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addSkill(e.currentTarget.value);
+                  e.currentTarget.value = '';
+                }
+              }} />
+            </div>
+          </section>
+        </main>
       </div>
     </div>
   );
 
   const renderMentorsTab = () => (
-    <div className="tab-content">
+    <div className="tab-content fade-in" data-state={mentors.length === 0 ? 'empty' : 'ready'}>
       <div className="mentors-search">
         <h3>Find Your Mentor</h3>
         <div className="search-filters">
@@ -518,8 +602,9 @@ const StudentDashboard = () => {
             type="text" 
             placeholder="Search by specialization or background..."
             className="search-input"
+            aria-label="Search mentors"
           />
-          <select className="specialization-filter">
+          <select className="specialization-filter" aria-label="Filter mentors by specialization">
             <option value="">All Specializations</option>
             <option value="Machine Learning">Machine Learning</option>
             <option value="Web Development">Web Development</option>
@@ -549,7 +634,7 @@ const StudentDashboard = () => {
                   <p className="mentor-company">{mentor.company}</p>
                 </div>
                 <div className="mentor-rating">
-                  <span className="stars">{"\u2B50".repeat(Math.floor(mentor.rating || 0))}</span>
+                  <span className="stars stars-colored">{"\u2B50".repeat(Math.floor(mentor.rating || 0))}</span>
                   <span className="rating-text">{mentor.rating}</span>
                 </div>
               </div>
@@ -561,7 +646,7 @@ const StudentDashboard = () => {
               </div>
               <div className="mentor-actions">
                 <button 
-                  className="btn btn-primary"
+                  className="btn btn-cta"
                   onClick={() => alert('Connect request sent!')}
                 >
                   Connect
@@ -576,14 +661,14 @@ const StudentDashboard = () => {
   );
 
   const renderCredentialsTab = () => (
-    <div className="tab-content">
+    <div className="tab-content fade-in" data-state={credentials.length === 0 ? 'empty' : 'ready'}>
       <div className="credentials-header">
         <h3>My Micro-Credentials</h3>
         <p>Showcase your capabilities to future employers</p>
       </div>
       {credentials.length === 0 ? (
         <div className="no-credentials">
-          <div className="no-data-icon">🏆</div>
+          <div className="no-data-icon">🎖️</div>
           <h3>No credentials yet</h3>
           <p>Complete projects and internships to earn your first credentials!</p>
         </div>
@@ -592,7 +677,7 @@ const StudentDashboard = () => {
           {credentials.map(credential => (
             <div key={credential.id} className="credential-card">
               <div className="credential-header">
-                <div className="credential-icon">🏆</div>
+                <div className="credential-icon">🎖️</div>
                 <div className="credential-info">
                   <h4>{credential.name}</h4>
                   <p className="issuer">Issued by {credential.issuer}</p>
@@ -608,8 +693,8 @@ const StudentDashboard = () => {
                 <strong>Project:</strong> {credential.project}
               </div>
               <div className="credential-actions">
-                <button className="btn btn-primary">Download Certificate</button>
-                <button className="btn btn-secondary">Share</button>
+                <button className="btn btn-primary">⬇️ Download</button>
+                <button className="btn btn-secondary">🔗 Share</button>
               </div>
             </div>
           ))}
@@ -628,45 +713,52 @@ const StudentDashboard = () => {
 
   return (
     <div className="student-dashboard">
-      <div className="dashboard-header">
+      <div className="dashboard-header animated">
         <div className="header-content">
           <div className="header-text">
-            <h1>Student Dashboard</h1>
-            <p>Welcome back! Here's what's happening with your opportunities and growth.</p>
+            <div className="header-greeting">
+              <div className="greet-avatar">{(user?.name || 'S').charAt(0).toUpperCase()}</div>
+              <div>
+                <h1>Welcome back{user?.name ? `, ${user.name.split(' ')[0]}` : ''}</h1>
+                <p>Here’s what’s happening with your opportunities and growth.</p>
+              </div>
+            </div>
           </div>
           <div className="header-actions">
-            <button onClick={() => { localStorage.clear(); navigate('/login'); }} className="btn btn-secondary">
-              Logout
+            <button onClick={() => setIsDark(v => !v)} className="btn btn-secondary" title="Toggle dark mode">🌓</button>
+            <button onClick={() => { localStorage.clear(); navigate('/login'); }} className="btn btn-secondary" title="Logout">
+              🚪
             </button>
           </div>
         </div>
       </div>
 
-      <div className="dashboard-tabs">
+      <div className="dashboard-tabs sticky">
         <button 
           className={`tab-button ${activeTab === 'opportunities' ? 'active' : ''}`}
           onClick={() => setActiveTab('opportunities')}
         >
-          🔍 Opportunities
+          <span className="tab-text">Opportunities</span>
         </button>
         <button 
           className={`tab-button ${activeTab === 'portfolio' ? 'active' : ''}`}
           onClick={() => setActiveTab('portfolio')}
         >
-          📁 Profile
+          <span className="tab-text">Profile</span>
         </button>
         <button 
           className={`tab-button ${activeTab === 'mentors' ? 'active' : ''}`}
           onClick={() => setActiveTab('mentors')}
         >
-          👥 Mentors
+          <span className="tab-text">Mentors</span>
         </button>
         <button 
           className={`tab-button ${activeTab === 'credentials' ? 'active' : ''}`}
           onClick={() => setActiveTab('credentials')}
         >
-          🏆 Credentials
+          <span className="tab-text">Credentials</span>
         </button>
+        <span className="tab-underline" aria-hidden />
       </div>
 
       <div className="dashboard-content">

@@ -10,6 +10,7 @@ export default function LoginForm({ onSubmit }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [userType, setUserType] = useState('student') // default to student
+  const [passwordStrength, setPasswordStrength] = useState(0)
   const navigate = useNavigate()
 
   async function handleSubmit(e) {
@@ -24,7 +25,6 @@ export default function LoginForm({ onSubmit }) {
 
       // Validate entrypoint vs role; allow student entry via selector
       if (userType === 'student' && backendRole !== 'student') {
-        // Frontend treats this session as student for routing/guards
         const adjustedUser = { ...data.user, role: 'student' }
         localStorage.setItem('user', JSON.stringify(adjustedUser))
         localStorage.setItem('userData', JSON.stringify(adjustedUser))
@@ -35,8 +35,13 @@ export default function LoginForm({ onSubmit }) {
         onSubmit && onSubmit({ email, password })
         return
       }
+
       if (userType === 'icm' && backendRole === 'student') {
         throw new Error('Student accounts must use the Student login.')
+      }
+
+      if (userType === 'academic' && backendRole !== 'academic_leader' && backendRole !== 'admin') {
+        throw new Error('Only Academic Leader accounts can use the Academic login.')
       }
       
       // Store user info (both legacy and new keys)
@@ -49,6 +54,10 @@ export default function LoginForm({ onSubmit }) {
       if (backendRole === 'student') {
         navigate('/student')
         setTimeout(() => { if (location.pathname !== '/student') location.assign('/student') }, 50)
+      } else if (backendRole === 'academic_leader' || backendRole === 'admin') {
+        navigate('/academic')
+      } else if (backendRole === 'university_admin') {
+        navigate('/university')
       } else if (backendRole === 'admin' || backendRole === 'manager' || backendRole === 'viewer') {
         navigate('/icm')
       } else {
@@ -61,6 +70,14 @@ export default function LoginForm({ onSubmit }) {
     } finally {
       setLoading(false)
     }
+  }
+
+  function evaluateStrength(pw) {
+    let s = 0
+    if (pw.length >= 8) s++
+    if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) s++
+    if (/\d/.test(pw) || /[^\w\s]/.test(pw)) s++
+    setPasswordStrength(s)
   }
 
   return (
@@ -102,6 +119,22 @@ export default function LoginForm({ onSubmit }) {
               <span className="type-icon">👨‍🎓</span>
               <span className="type-text">Student</span>
             </button>
+            <button
+              type="button"
+              className={`type-btn ${userType === 'academic' ? 'active' : ''}`}
+              onClick={() => setUserType('academic')}
+            >
+              <span className="type-icon">🎓</span>
+              <span className="type-text">Academic Leader</span>
+            </button>
+            <button
+              type="button"
+              className={`type-btn ${userType === 'university' ? 'active' : ''}`}
+              onClick={() => setUserType('university')}
+            >
+              <span className="type-icon">🏛️</span>
+              <span className="type-text">University Admin</span>
+            </button>
           </div>
 
           <form className="login-form" onSubmit={handleSubmit}>
@@ -123,7 +156,7 @@ export default function LoginForm({ onSubmit }) {
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => { setPassword(e.target.value); evaluateStrength(e.target.value) }}
                   required
                 />
                 <button
@@ -139,8 +172,18 @@ export default function LoginForm({ onSubmit }) {
 
             {error && <div className="error" role="alert">{error}</div>}
 
+            {userType === 'student' && (
+              <div style={{ color:'#cbd5e1', fontSize:12, marginTop:6 }}>Tip: Use at least 8 chars with a number or symbol.</div>
+            )}
+
+            <div className={`strength s${passwordStrength}`} aria-hidden>
+              <div className="bar" />
+              <div className="bar" />
+              <div className="bar" />
+            </div>
+
             <button type="submit" className="submit" disabled={loading}>
-              {loading ? 'Signing in…' : `Sign in as ${userType === 'student' ? 'Student' : 'ICM'}`}
+              {loading ? 'Signing in…' : `Sign in as ${userType === 'student' ? 'Student' : userType === 'academic' ? 'Academic Leader' : userType === 'university' ? 'University Admin' : 'ICM'}`}
             </button>
 
             <div className="meta">
@@ -152,7 +195,7 @@ export default function LoginForm({ onSubmit }) {
             </div>
           </form>
           <div className="footer-note">
-            <span>New to ICM?</span>
+            <span>New here?</span>
             <a className="link" href="/signup">Create an account</a>
           </div>
           
