@@ -59,14 +59,31 @@ export const apiRequest = async (url, options = {}) => {
   const userData = JSON.parse(localStorage.getItem('userData') || localStorage.getItem('user') || '{}')
   const userRole = localStorage.getItem('userRole')
   
-  if (userData.id) {
-    defaultOptions.headers['x-user-id'] = userData.id
+  // Try multiple sources for user ID
+  let userId = userData.id
+  if (!userId) {
+    // Fallback: try to get from other storage keys
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    userId = user.id
+  }
+  
+  if (userId) {
+    defaultOptions.headers['x-user-id'] = userId
+  } else {
+    // If no user ID and this is not a public endpoint, throw an error
+    const publicEndpoints = ['/api/auth/login', '/api/auth/signup', '/api/health']
+    const isPublicEndpoint = publicEndpoints.some(endpoint => url.includes(endpoint))
+    
+    if (!isPublicEndpoint) {
+      console.error('No user ID found for protected endpoint:', url)
+      throw new Error('User not authenticated. Please log in again.')
+    }
   }
   
   // Debug logging for authentication
   console.log('API Auth Debug:', { 
-    hasUserData: !!userData.id, 
-    userId: userData.id, 
+    hasUserData: !!userId, 
+    userId: userId, 
     userRole,
     url 
   })
