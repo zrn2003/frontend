@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { api } from '../config/api.js'
 import './LoginForm.css'
 
 export default function LoginForm({ onSubmit }) {
@@ -13,13 +14,7 @@ export default function LoginForm({ onSubmit }) {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'Login failed')
+      const data = await api.login({ email, password })
       
       // Store user info in localStorage for session management
       localStorage.setItem('user', JSON.stringify(data.user))

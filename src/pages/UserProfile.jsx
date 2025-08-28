@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { api } from '../config/api.js'
 
 export default function UserProfile() {
   const [user, setUser] = useState(null)
@@ -74,17 +75,7 @@ export default function UserProfile() {
         payload.newPassword = formData.newPassword
       }
 
-      const res = await fetch('/api/auth/profile', {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-user-id': user.id
-        },
-        body: JSON.stringify(payload)
-      })
-
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'Failed to update profile')
+      const data = await api.updateProfile(payload)
 
       setSuccess('Profile updated successfully!')
       setIsEditing(false)

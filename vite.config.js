@@ -5,12 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    proxy: {
-      '/api': {
-        target: process.env.VITE_API_BASE_URL || 'https://trustteams-backend.vercel.app',
-        changeOrigin: true,
-        secure: true
-      }
-    }
+    port: 5173,
+    host: true
   }
 })

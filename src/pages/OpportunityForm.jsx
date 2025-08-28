@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
+import { api } from '../config/api.js'
 
 export default function OpportunityForm({ mode = 'create' }) {
   // Check if user is authenticated
@@ -27,9 +28,7 @@ export default function OpportunityForm({ mode = 'create' }) {
       async function loadOpportunity() {
         try {
           setLoading(true)
-          const res = await fetch(`/api/opportunities/${id}`)
-          const data = await res.json()
-          if (!res.ok) throw new Error(data.message || 'Failed to load')
+          const data = await api.getOpportunity(id)
           
           const opportunity = data.opportunity
           setTitle(opportunity.title || '')
@@ -57,26 +56,17 @@ export default function OpportunityForm({ mode = 'create' }) {
     try {
       const payload = { title, type, description, location, status, closingDate }
       
-      const url = mode === 'edit' ? `/api/opportunities/${id}` : '/api/opportunities'
-      const method = mode === 'edit' ? 'PUT' : 'POST'
-      
       // Get user ID from localStorage
       const user = JSON.parse(localStorage.getItem('user') || '{}')
       if (!user.id) {
         throw new Error('User not authenticated. Please login again.')
       }
 
-      const res = await fetch(url, {
-        method,
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-user-id': user.id
-        },
-        body: JSON.stringify(payload)
-      })
-      
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'Failed to save')
+      if (mode === 'edit') {
+        await api.updateOpportunity(id, payload)
+      } else {
+        await api.createOpportunity(payload)
+      }
       
       setSuccess(mode === 'edit' ? 'Opportunity updated successfully!' : 'Opportunity posted successfully!')
       

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { api } from '../config/api.js'
 
 export default function IcmDashboard() {
   // Check if user is authenticated
@@ -27,10 +28,7 @@ export default function IcmDashboard() {
   async function loadOpportunities() {
     setLoading(true)
     try {
-      const res = await fetch('/api/opportunities?limit=10&sortBy=created_at&sortOrder=DESC')
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'Failed to load')
-      
+      const data = await api.getOpportunities({ limit: 10, sortBy: 'created_at', sortOrder: 'DESC' })
       setItems(data.opportunities || [])
       
       // Calculate stats
@@ -273,18 +271,8 @@ export default function IcmDashboard() {
                                   return
                                 }
 
-                                const res = await fetch(`/api/opportunities/${o.id}`, {
-                                  method: 'DELETE',
-                                  headers: { 
-                                    'Content-Type': 'application/json',
-                                    'x-user-id': user.id
-                                  }
-                                })
-                                if (res.ok) {
-                                  loadOpportunities() // Refresh the list
-                                } else {
-                                  alert('Failed to delete opportunity')
-                                }
+                                                                 await api.deleteOpportunity(o.id)
+                                 loadOpportunities() // Refresh the list
                               } catch (err) {
                                 alert('Error deleting opportunity')
                               }

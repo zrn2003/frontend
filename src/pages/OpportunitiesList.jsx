@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { api } from '../config/api.js'
 import SearchBar from '../components/SearchBar'
 
 export default function OpportunitiesList() {
@@ -38,15 +39,7 @@ export default function OpportunitiesList() {
   async function loadOpportunities() {
     setLoading(true)
     try {
-      const params = new URLSearchParams()
-      Object.entries(searchParams).forEach(([key, value]) => {
-        if (value) params.append(key, value)
-      })
-
-      const res = await fetch(`/api/opportunities?${params.toString()}`)
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'Failed to load')
-      
+      const data = await api.getOpportunities(searchParams)
       setItems(data.opportunities || [])
       setPagination(data.pagination || { total: 0, limit: 20, offset: 0, hasMore: false })
     } catch (e) {
@@ -208,18 +201,8 @@ export default function OpportunitiesList() {
                                   return
                                 }
 
-                                const res = await fetch(`/api/opportunities/${o.id}`, {
-                                  method: 'DELETE',
-                                  headers: { 
-                                    'Content-Type': 'application/json',
-                                    'x-user-id': user.id
-                                  }
-                                })
-                                if (res.ok) {
-                                  loadOpportunities()
-                                } else {
-                                  alert('Failed to delete opportunity')
-                                }
+                                                                 await api.deleteOpportunity(o.id)
+                                 loadOpportunities()
                               } catch (err) {
                                 alert('Error deleting opportunity')
                               }

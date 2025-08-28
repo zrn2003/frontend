@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { api } from '../config/api.js'
 import '../components/LoginForm.css'
 
 export default function Signup() {
@@ -16,13 +17,7 @@ export default function Signup() {
     setError('')
     setSuccess('')
     try {
-      const res = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password })
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'Signup failed')
+      const data = await api.signup({ name, email, password })
       setSuccess('Account created. You can now sign in.')
       setName('')
       setEmail('')
