@@ -2,20 +2,26 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 
 const StudentRoute = ({ element }) => {
-  const storedUser = localStorage.getItem('userData');
-  const user = storedUser ? JSON.parse(storedUser) : null;
-  const role = (user && user.role) || localStorage.getItem('userRole') || '';
+  const storedUserData = localStorage.getItem('userData');
+  const storedUser = storedUserData ? JSON.parse(storedUserData) : null;
+  const storedRole = (localStorage.getItem('userRole') || '').toLowerCase();
+  const role = (storedRole || (storedUser?.role || '')).toLowerCase();
 
-  if (!user) {
+  // Debug once per render to verify gate inputs
+  try { console.debug('[StudentRoute]', { storedRole, role }); } catch {}
+
+  // If we positively know the session is student, allow
+  if (role === 'student') {
+    return element;
+  }
+
+  // If no session, send to login
+  if (!storedUser && !storedRole) {
     return <Navigate to="/login" replace />;
   }
 
-  if (role.toLowerCase() !== 'student') {
-    // Non-students are redirected to ICM dashboard (or home)
-    return <Navigate to="/icm" replace />;
-  }
-
-  return element;
+  // Otherwise, non-student goes to ICM area
+  return <Navigate to="/icm" replace />;
 };
 
 export default StudentRoute;

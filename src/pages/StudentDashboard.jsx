@@ -43,18 +43,19 @@ const StudentDashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const userToken = localStorage.getItem('userToken');
-    const userData = localStorage.getItem('userData');
-    if (!userToken || !userData) {
+    const rawUser = localStorage.getItem('userData') || localStorage.getItem('user');
+    const roleFromStorage = (localStorage.getItem('userRole') || '').toLowerCase();
+    const parsed = rawUser ? JSON.parse(rawUser) : null;
+    const role = (parsed?.role || roleFromStorage || '').toLowerCase();
+
+    try { console.debug('[StudentDashboard gate]', { hasUser: !!parsed, role }); } catch {}
+
+    if (!parsed || role !== 'student') {
       navigate('/login');
       return;
     }
-    const parsed = JSON.parse(userData);
+
     setUser(parsed);
-    if ((parsed.role || '').toLowerCase() !== 'student') {
-      navigate('/login');
-      return;
-    }
     fetchOpportunities(true);
     fetchProfile(parsed.id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -131,7 +132,7 @@ const StudentDashboard = () => {
   const saveProfile = async () => {
     try {
       setSaving(true);
-      const userData = JSON.parse(localStorage.getItem('userData'));
+      const userData = JSON.parse(localStorage.getItem('userData') || localStorage.getItem('user'));
       const normalizeDates = arr => (arr || []).map(it => ({
         ...it,
         end: it.current ? '' : (it.end || currentMonth())
@@ -548,7 +549,7 @@ const StudentDashboard = () => {
                   <p className="mentor-company">{mentor.company}</p>
                 </div>
                 <div className="mentor-rating">
-                  <span className="stars">{"⭐".repeat(Math.floor(mentor.rating))}</span>
+                  <span className="stars">{"\u2B50".repeat(Math.floor(mentor.rating || 0))}</span>
                   <span className="rating-text">{mentor.rating}</span>
                 </div>
               </div>
