@@ -1,7 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-const API_TARGET = import.meta.env.VITE_API_TARGET || 'http://localhost:3001'
+// Provide fallbacks for environment variables
+const API_TARGET = process.env.VITE_API_TARGET || 'http://localhost:3001'
+const API_BASE_URL = process.env.VITE_API_BASE_URL || 'https://trustteams-backend.vercel.app/api'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -9,7 +11,7 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
-    proxy: import.meta.env.MODE === 'development' ? {
+    proxy: process.env.NODE_ENV === 'development' ? {
       '/api': {
         target: API_TARGET,
         changeOrigin: true,
@@ -37,7 +39,8 @@ export default defineConfig({
     sourcemap: false
   },
   define: {
-    // Make environment variables available in the client
-    'process.env.VITE_API_BASE_URL': JSON.stringify(import.meta.env.VITE_API_BASE_URL)
+    // Make environment variables available in the client with proper fallbacks
+    'process.env.VITE_API_BASE_URL': JSON.stringify(API_BASE_URL),
+    'process.env.VITE_API_TARGET': JSON.stringify(API_TARGET)
   }
 })
