@@ -5,8 +5,25 @@
   font-family: "Poppins", sans-serif;
 }
 
+/* Alias for current JSX */
+.login-page { /* same as .login-wrapper */
+  display: flex;
+  height: 100vh;
+  font-family: "Poppins", sans-serif;
+}
+
 /* Branding side */
 .branding {
+  flex: 1;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  padding: 40px;
+}
+/* Alias */
+.brand-panel { /* same as .branding */
   flex: 1;
   background: linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899);
   display: flex;
@@ -29,6 +46,15 @@
 
 /* Login panel side */
 .login-panel {
+  flex: 1;
+  background: #f9fafb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+/* Alias */
+.form-panel { /* same as .login-panel */
   flex: 1;
   background: #f9fafb;
   display: flex;
@@ -66,8 +92,22 @@
   margin-bottom: 6px;
   text-align: center;
 }
+/* Alias for header */
+.login-header h1 {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  text-align: center;
+}
 
 .login-subtitle {
+  color: #6b7280;
+  font-size: 14px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+/* Alias */
+.login-header .subtitle {
   color: #6b7280;
   font-size: 14px;
   text-align: center;
@@ -122,8 +162,14 @@
   position: relative;
   display: flex;
 }
+/* Alias */
+.password-wrap {
+  position: relative;
+  display: flex;
+}
 
-.password-box input {
+.password-box input,
+.password-wrap input {
   flex: 1;
 }
 
@@ -156,6 +202,13 @@
   margin: 12px 0 20px;
   font-size: 14px;
 }
+/* Alias */
+.meta { /* same as .options */
+  display: flex;
+  justify-content: space-between;
+  margin: 12px 0 20px;
+  font-size: 14px;
+}
 
 .options label {
   display: flex;
@@ -179,19 +232,41 @@
   cursor: pointer;
   transition: all 0.2s ease;
 }
+/* Alias */
+.submit { /* same as .btn-submit */
+  width: 100%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  padding: 12px;
+  font-size: 15px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
 
-.btn-submit:hover:not(:disabled) {
+.btn-submit:hover:not(:disabled),
+.submit:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
 }
 
-.btn-submit:disabled {
+.btn-submit:disabled,
+.submit:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
 
 /* Footer */
 .footer-text {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 14px;
+  color: #374151;
+}
+/* Alias */
+.footer-note {
   text-align: center;
   margin-top: 20px;
   font-size: 14px;
@@ -217,7 +292,7 @@
 /* Branding highlights */
 .highlights {
   margin-top: 20px;
-  list-style: none; 
+  list-style: none;
   padding: 0;
 }
 
@@ -227,6 +302,12 @@
 }
 /* Role selection */
 .role-select {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+/* Alias for role selector used in JSX */
+.user-type-selector {
   display: flex;
   gap: 10px;
   margin-bottom: 20px;
@@ -243,9 +324,23 @@
   cursor: pointer;
   transition: 0.3s;
 }
+/* Alias */
+.type-btn {
+  flex: 1;
+  padding: 10px;
+  border: 2px solid #667eea;
+  border-radius: 8px;
+  background: #fff;
+  color: #667eea;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s;
+}
 
 .role-btn.active,
-.role-btn:hover {
+.role-btn:hover,
+.type-btn.active,
+.type-btn:hover {
   background: #667eea;
   color: #fff;
 }

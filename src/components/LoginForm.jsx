@@ -1,88 +1,115 @@
-import { useState } from "react";
-import { api } from "../config/api.js";
-import { useNavigate } from "react-router-dom";
-import "./LoginForm.css";
+import { useState } from 'react'
+import { api } from '../config/api.js'
+import './LoginForm.css'
+import { useNavigate } from 'react-router-dom'
 
 export default function LoginForm({ onSubmit }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [remember, setRemember] = useState(false);
-  const [userType, setUserType] = useState("icm"); // 'icm' | 'student'
-  const navigate = useNavigate();
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [userType, setUserType] = useState('student') // default to student
+  const navigate = useNavigate()
 
   async function handleSubmit(e) {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+    e.preventDefault()
+    setLoading(true)
+    setError('')
     try {
-      const data = await api.login({ email, password });
+      const data = await api.login({ email, password })
 
-      const storage = remember ? localStorage : sessionStorage;
-      storage.setItem("user", JSON.stringify(data.user));
-      storage.setItem("userRole", data.user?.role || "");
-      storage.setItem("userType", userType);
+      const backendRole = (data?.user?.role || '').toLowerCase()
+      if (!backendRole) throw new Error('Invalid account response.')
 
-      if (userType === "student") {
-        navigate("/student");
+      // Validate entrypoint vs role; allow student entry via selector
+      if (userType === 'student' && backendRole !== 'student') {
+        // Frontend treats this session as student for routing/guards
+        const adjustedUser = { ...data.user, role: 'student' }
+        localStorage.setItem('user', JSON.stringify(adjustedUser))
+        localStorage.setItem('userData', JSON.stringify(adjustedUser))
+        localStorage.setItem('userRole', 'student')
+        localStorage.setItem('userType', userType)
+        navigate('/student')
+        setTimeout(() => { if (location.pathname !== '/student') location.assign('/student') }, 50)
+        onSubmit && onSubmit({ email, password })
+        return
+      }
+      if (userType === 'icm' && backendRole === 'student') {
+        throw new Error('Student accounts must use the Student login.')
+      }
+      
+      // Store user info (both legacy and new keys)
+      localStorage.setItem('user', JSON.stringify(data.user))
+      localStorage.setItem('userData', JSON.stringify(data.user))
+      localStorage.setItem('userRole', backendRole)
+      localStorage.setItem('userType', userType)
+
+      // Redirect
+      if (backendRole === 'student') {
+        navigate('/student')
+        setTimeout(() => { if (location.pathname !== '/student') location.assign('/student') }, 50)
+      } else if (backendRole === 'admin' || backendRole === 'manager' || backendRole === 'viewer') {
+        navigate('/icm')
       } else {
-        const role = data.user?.role?.toLowerCase();
-        if (role === "admin" || role === "manager") navigate("/icm");
-        else if (role === "viewer") navigate("/opportunities");
-        else navigate("/icm");
+        navigate('/')
       }
 
-      onSubmit && onSubmit({ email, password });
+      onSubmit && onSubmit({ email, password })
     } catch (e) {
-      setError(e?.response?.data?.message || e?.message || "Login failed. Try again.");
+      setError(e.message || 'Something went wrong. Please try again.')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
   return (
-    <div className="login-wrapper">
-      {/* Left branding panel */}
-      <aside className="branding">
+    <div className="login-page">
+      <aside className="brand-panel">
         <div className="brand-content">
-          <h1 className="brand-logo">ICM</h1>
+          <div className="logo-mark" aria-hidden>ICM</div>
           <h2>Industry Collaboration Manager</h2>
-          <p>Empowering students & industry leaders to collaborate and grow together 🚀</p>
+          <p>Coordinate with partners, streamline approvals, and accelerate partnerships.</p>
+          <ul className="highlights">
+            <li>Secure role-based access</li>
+            <li>Real-time partner updates</li>
+            <li>Centralized records</li>
+          </ul>
         </div>
       </aside>
-
-      {/* Right login panel */}
-      <main className="login-panel">
+      <main className="form-panel">
         <div className="login-card">
-          <h2 className="login-title">Welcome Back 👋</h2>
-          <p className="login-subtitle">Sign in to continue</p>
+          <div className="login-header">
+            <h1>Welcome back</h1>
+            <p className="subtitle">Sign in to continue</p>
+          </div>
 
           {/* User type selector */}
-          <div className="user-tabs">
+          <div className="user-type-selector" style={{ marginBottom: 16 }}>
             <button
               type="button"
-              className={userType === "icm" ? "tab active" : "tab"}
-              onClick={() => setUserType("icm")}
+              className={`type-btn ${userType === 'icm' ? 'active' : ''}`}
+              onClick={() => setUserType('icm')}
             >
-              🏭 ICM
+              <span className="type-icon">🏭</span>
+              <span className="type-text">Industry Collaboration Manager</span>
             </button>
             <button
               type="button"
-              className={userType === "student" ? "tab active" : "tab"}
-              onClick={() => setUserType("student")}
+              className={`type-btn ${userType === 'student' ? 'active' : ''}`}
+              onClick={() => setUserType('student')}
             >
-              🎓 Student
+              <span className="type-icon">👨‍🎓</span>
+              <span className="type-text">Student</span>
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="form">
+          <form className="login-form" onSubmit={handleSubmit}>
             <label className="field">
               <span>Email</span>
               <input
                 type="email"
-                placeholder="you@example.com"
+                placeholder="you@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -91,9 +118,9 @@ export default function LoginForm({ onSubmit }) {
 
             <label className="field">
               <span>Password</span>
-              <div className="password-box">
+              <div className="password-wrap">
                 <input
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -102,41 +129,49 @@ export default function LoginForm({ onSubmit }) {
                 <button
                   type="button"
                   className="toggle"
-                  onClick={() => setShowPassword((s) => !s)}
+                  onClick={() => setShowPassword(s => !s)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? "🙈" : "👁️"}
+                  {showPassword ? 'Hide' : 'Show'}
                 </button>
               </div>
             </label>
 
-            {error && <div className="error">{error}</div>}
+            {error && <div className="error" role="alert">{error}</div>}
 
-            <div className="options">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={remember}
-                  onChange={(e) => setRemember(e.target.checked)}
-                />
-                Remember me
-              </label>
-              <a href="#" className="link">
-                Forgot password?
-              </a>
-            </div>
-
-            <button type="submit" className="btn-submit" disabled={loading}>
-              {loading
-                ? "Signing in..."
-                : `Sign in as ${userType === "student" ? "Student" : "ICM"}`}
+            <button type="submit" className="submit" disabled={loading}>
+              {loading ? 'Signing in…' : `Sign in as ${userType === 'student' ? 'Student' : 'ICM'}`}
             </button>
-          </form>
 
-          <p className="footer-text">
-            New here? <a href="/signup" className="link">Create an account</a>
-          </p>
+            <div className="meta">
+              <label className="remember">
+                <input type="checkbox" />
+                <span>Remember me</span>
+              </label>
+              <a className="link" href="#">Forgot password?</a>
+            </div>
+          </form>
+          <div className="footer-note">
+            <span>New to ICM?</span>
+            <a className="link" href="/signup">Create an account</a>
+          </div>
+          
+          {/* Demo credentials */}
+          <div style={{ 
+            marginTop: 'var(--spacing-4)', 
+            padding: 'var(--spacing-3)', 
+            background: 'var(--surface)', 
+            borderRadius: 'var(--radius-md)',
+            fontSize: 'var(--font-size-sm)',
+            color: 'var(--text-muted)'
+          }}>
+            <strong>Demo Accounts:</strong><br/>
+            Admin: admin@trustteams.com / admin123<br/>
+            Manager: manager@trustteams.com / manager123<br/>
+            Viewer: viewer@trustteams.com / viewer123
+          </div>
         </div>
       </main>
     </div>
-  );
+  )
 }
