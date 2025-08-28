@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react'
 
 export default function IcmDashboard() {
+  // Check if user is authenticated
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    if (!user.id) {
+      window.location.href = '/'
+      return
+    }
+  }, [])
+
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -22,13 +31,13 @@ export default function IcmDashboard() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'Failed to load')
       
-      setItems(data.items || [])
+      setItems(data.opportunities || [])
       
       // Calculate stats
       const total = data.pagination?.total || 0
-      const open = data.items?.filter(o => o.status === 'open').length || 0
-      const closed = data.items?.filter(o => o.status === 'closed').length || 0
-      const expiring = data.items?.filter(o => {
+      const open = data.opportunities?.filter(o => o.status === 'open').length || 0
+      const closed = data.opportunities?.filter(o => o.status === 'closed').length || 0
+      const expiring = data.opportunities?.filter(o => {
         if (!o.closingDate || o.status === 'closed') return false
         const closingDate = new Date(o.closingDate)
         const now = new Date()
@@ -57,7 +66,11 @@ export default function IcmDashboard() {
   // Check if opportunity is expired
   const isExpired = (closingDate) => {
     if (!closingDate) return false
-    return new Date(closingDate) < new Date()
+    const today = new Date()
+    today.setHours(0, 0, 0, 0) // Reset time to start of day
+    const closing = new Date(closingDate)
+    closing.setHours(0, 0, 0, 0) // Reset time to start of day
+    return closing < today
   }
 
   // Get days until closing
@@ -86,7 +99,11 @@ export default function IcmDashboard() {
           <div className="nav-links">
             <a href="/opportunities" className="link">All Opportunities</a>
             <a href="/profile" className="link">Profile</a>
-            <a href="/" className="link">Logout</a>
+            <a href="/" className="link" onClick={(e) => {
+              e.preventDefault()
+              localStorage.removeItem('user')
+              window.location.href = '/'
+            }}>Logout</a>
           </div>
         </div>
       </nav>
@@ -189,16 +206,19 @@ export default function IcmDashboard() {
                         <h3 className="opportunity-title">{o.title}</h3>
                         <div className="opportunity-meta">
                           <span className="opportunity-type">{o.type}</span>
-                          <span 
-                            className={`opportunity-status ${o.status}`} 
-                            style={{ 
-                              marginLeft: 'var(--spacing-2)',
-                              backgroundColor: getStatusColor(o.status, o.closingDate) + '20',
-                              color: getStatusColor(o.status, o.closingDate)
-                            }}
-                          >
-                            {o.status}
-                          </span>
+                                                     <span 
+                             className={`opportunity-status ${o.status}`} 
+                             style={{ 
+                               marginLeft: 'var(--spacing-2)',
+                               backgroundColor: o.status === 'open' ? 'var(--success)' : 'var(--error)',
+                               color: 'white',
+                               padding: '2px 8px',
+                               borderRadius: '4px',
+                               fontSize: 'var(--font-size-sm)'
+                             }}
+                           >
+                             {o.status}
+                           </span>
                           <span style={{ marginLeft: 'var(--spacing-2)' }}>
                             📍 {o.location || 'Remote/NA'}
                           </span>
@@ -247,9 +267,18 @@ export default function IcmDashboard() {
                           onClick={async () => {
                             if (confirm('Are you sure you want to delete this opportunity?')) {
                               try {
+                                const user = JSON.parse(localStorage.getItem('user') || '{}')
+                                if (!user.id) {
+                                  alert('User not authenticated. Please login again.')
+                                  return
+                                }
+
                                 const res = await fetch(`/api/opportunities/${o.id}`, {
                                   method: 'DELETE',
-                                  headers: { 'Content-Type': 'application/json' }
+                                  headers: { 
+                                    'Content-Type': 'application/json',
+                                    'x-user-id': user.id
+                                  }
                                 })
                                 if (res.ok) {
                                   loadOpportunities() // Refresh the list

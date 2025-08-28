@@ -2,6 +2,15 @@ import { useEffect, useState } from 'react'
 import SearchBar from '../components/SearchBar'
 
 export default function OpportunitiesList() {
+  // Check if user is authenticated
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    if (!user.id) {
+      window.location.href = '/'
+      return
+    }
+  }, [])
+
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -38,7 +47,7 @@ export default function OpportunitiesList() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'Failed to load')
       
-      setItems(data.items || [])
+      setItems(data.opportunities || [])
       setPagination(data.pagination || { total: 0, limit: 20, offset: 0, hasMore: false })
     } catch (e) {
       setError(e.message || 'Failed to load')
@@ -85,7 +94,11 @@ export default function OpportunitiesList() {
   // Check if opportunity is expired
   const isExpired = (closingDate) => {
     if (!closingDate) return false
-    return new Date(closingDate) < new Date()
+    const today = new Date()
+    today.setHours(0, 0, 0, 0) // Reset time to start of day
+    const closing = new Date(closingDate)
+    closing.setHours(0, 0, 0, 0) // Reset time to start of day
+    return closing < today
   }
 
   return (
@@ -96,7 +109,11 @@ export default function OpportunitiesList() {
           <div className="nav-links">
             <a href="/opportunities" className="link">All Opportunities</a>
             <a href="/profile" className="link">Profile</a>
-            <a href="/" className="link">Logout</a>
+            <a href="/" className="link" onClick={(e) => {
+              e.preventDefault()
+              localStorage.removeItem('user')
+              window.location.href = '/'
+            }}>Logout</a>
           </div>
         </div>
       </nav>
@@ -143,27 +160,37 @@ export default function OpportunitiesList() {
                         <h3 className="opportunity-title">{o.title}</h3>
                         <div className="opportunity-meta">
                           <span className="opportunity-type">{o.type}</span>
-                          <span className={`opportunity-status ${o.status}`} style={{ marginLeft: 'var(--spacing-2)' }}>
-                            {o.status}
-                          </span>
+                                                     <span className={`opportunity-status ${o.status}`} style={{ 
+                             marginLeft: 'var(--spacing-2)',
+                             backgroundColor: o.status === 'open' ? 'var(--success)' : 'var(--error)',
+                             color: 'white',
+                             padding: '2px 8px',
+                             borderRadius: '4px',
+                             fontSize: 'var(--font-size-sm)'
+                           }}>
+                             {o.status}
+                           </span>
                           <span style={{ marginLeft: 'var(--spacing-2)' }}>
                             {o.location || 'Remote/NA'}
                           </span>
-                          {o.closingDate && (
-                            <span style={{ 
-                              marginLeft: 'var(--spacing-2)', 
-                              color: isExpired(o.closingDate) ? 'var(--error)' : 'var(--text-muted)',
-                              fontWeight: isExpired(o.closingDate) ? '500' : 'normal'
-                            }}>
-                              Closes: {formatDate(o.closingDate)}
-                              {isExpired(o.closingDate) && ' (Expired)'}
-                            </span>
-                          )}
-                          {o.postedByName && (
-                            <span style={{ marginLeft: 'var(--spacing-2)', color: 'var(--text-muted)' }}>
-                              by {o.postedByName}
-                            </span>
-                          )}
+                                                     {o.closingDate && (
+                             <span style={{ 
+                               marginLeft: 'var(--spacing-2)', 
+                               color: isExpired(o.closingDate) ? 'var(--error)' : 'var(--text-muted)',
+                               fontWeight: isExpired(o.closingDate) ? '500' : 'normal'
+                             }}>
+                               📅 Closes: {formatDate(o.closingDate)}
+                               {isExpired(o.closingDate) && ' ⏰ (Expired)'}
+                             </span>
+                           )}
+                                                     {o.postedByName && (
+                             <span style={{ marginLeft: 'var(--spacing-2)', color: 'var(--text-muted)' }}>
+                               by {o.postedByName}
+                             </span>
+                           )}
+                           <span style={{ marginLeft: 'var(--spacing-2)', color: 'var(--text-muted)' }}>
+                             📅 Posted: {formatDate(o.createdAt)}
+                           </span>
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -175,9 +202,18 @@ export default function OpportunitiesList() {
                           onClick={async () => {
                             if (confirm('Are you sure you want to delete this opportunity?')) {
                               try {
+                                const user = JSON.parse(localStorage.getItem('user') || '{}')
+                                if (!user.id) {
+                                  alert('User not authenticated. Please login again.')
+                                  return
+                                }
+
                                 const res = await fetch(`/api/opportunities/${o.id}`, {
                                   method: 'DELETE',
-                                  headers: { 'Content-Type': 'application/json' }
+                                  headers: { 
+                                    'Content-Type': 'application/json',
+                                    'x-user-id': user.id
+                                  }
                                 })
                                 if (res.ok) {
                                   loadOpportunities()
@@ -233,6 +269,4 @@ export default function OpportunitiesList() {
       </div>
     </div>
   )
-}
-
-
+ }

@@ -2,6 +2,15 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 
 export default function OpportunityForm({ mode = 'create' }) {
+  // Check if user is authenticated
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    if (!user.id) {
+      window.location.href = '/'
+      return
+    }
+  }, [])
+
   const { id } = useParams()
   const [title, setTitle] = useState('')
   const [type, setType] = useState('other')
@@ -22,12 +31,13 @@ export default function OpportunityForm({ mode = 'create' }) {
           const data = await res.json()
           if (!res.ok) throw new Error(data.message || 'Failed to load')
           
-          setTitle(data.title || '')
-          setType(data.type || 'other')
-          setDescription(data.description || '')
-          setLocation(data.location || '')
-          setStatus(data.status || 'open')
-          setClosingDate(data.closing_date ? data.closing_date.split('T')[0] : '')
+          const opportunity = data.opportunity
+          setTitle(opportunity.title || '')
+          setType(opportunity.type || 'other')
+          setDescription(opportunity.description || '')
+          setLocation(opportunity.location || '')
+          setStatus(opportunity.status || 'open')
+          setClosingDate(opportunity.closingDate ? opportunity.closingDate.split('T')[0] : '')
         } catch (e) {
           setError(e.message || 'Failed to load')
         } finally {
@@ -50,9 +60,18 @@ export default function OpportunityForm({ mode = 'create' }) {
       const url = mode === 'edit' ? `/api/opportunities/${id}` : '/api/opportunities'
       const method = mode === 'edit' ? 'PUT' : 'POST'
       
+      // Get user ID from localStorage
+      const user = JSON.parse(localStorage.getItem('user') || '{}')
+      if (!user.id) {
+        throw new Error('User not authenticated. Please login again.')
+      }
+
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-id': user.id
+        },
         body: JSON.stringify(payload)
       })
       
@@ -83,7 +102,11 @@ export default function OpportunityForm({ mode = 'create' }) {
           <div className="nav-links">
             <a href="/opportunities" className="link">All Opportunities</a>
             <a href="/profile" className="link">Profile</a>
-            <a href="/" className="link">Logout</a>
+            <a href="/" className="link" onClick={(e) => {
+              e.preventDefault()
+              localStorage.removeItem('user')
+              window.location.href = '/'
+            }}>Logout</a>
           </div>
         </div>
       </nav>
