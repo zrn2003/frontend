@@ -1,6 +1,9 @@
 // API Configuration
 // Use environment variable for production, fallback to proxy for development
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+  (import.meta.env.MODE === 'production' 
+    ? 'https://trustteams-backend.vercel.app/api' 
+    : '/api')
 
 // Debug logging for API configuration
 console.log('API Configuration:', {
