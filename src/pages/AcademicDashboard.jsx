@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { api } from '../config/api.js'
 import './AcademicDashboard.css'
 
 export default function AcademicDashboard() {
@@ -17,13 +18,7 @@ export default function AcademicDashboard() {
     try {
       setLoading(true)
       setError('')
-      const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('userData') || '{}')
-      const res = await fetch('/api/academic/students', { headers: { 'x-user-id': String(user.id) } })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.message || 'Failed to load students')
-      }
-      const data = await res.json()
+      const data = await api.getAcademicStudents()
       // Add UI-only status fallback
       const withStatus = (data.students || []).map(s => ({ ...s, status: s.status || 'active' }))
       setStudents(withStatus)
@@ -37,15 +32,7 @@ export default function AcademicDashboard() {
   const deleteStudent = async (id) => {
     if (!window.confirm('Delete this student?')) return
     try {
-      const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('userData') || '{}')
-      const res = await fetch(`/api/academic/students/${id}`, {
-        method: 'DELETE',
-        headers: { 'x-user-id': String(user.id) }
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.message || 'Delete failed')
-      }
+      await api.deleteAcademicStudent(id)
       await fetchStudents()
       alert('Student deleted')
     } catch (e) {

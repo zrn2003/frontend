@@ -162,5 +162,28 @@ export const api = {
   }),
 
   // Health
-  health: () => apiRequest(API_ENDPOINTS.HEALTH)
+  health: () => apiRequest(API_ENDPOINTS.HEALTH),
+
+  // Student routes
+  getStudentProfile: () => apiRequest(API_ENDPOINTS.STUDENT_PROFILE),
+  updateStudentProfile: (profileData) => apiRequest(API_ENDPOINTS.STUDENT_PROFILE, {
+    method: 'PUT',
+    body: JSON.stringify(profileData)
+  }),
+
+  // Academic routes
+  getAcademicStudents: () => apiRequest(API_ENDPOINTS.ACADEMIC_STUDENTS),
+  deleteAcademicStudent: (id) => apiRequest(API_ENDPOINTS.ACADEMIC_DELETE_STUDENT(id), {
+    method: 'DELETE'
+  }),
+
+  // University routes
+  getUniversityStats: () => apiRequest(API_ENDPOINTS.UNIVERSITY_STATS),
+  getUniversityStudents: () => apiRequest(API_ENDPOINTS.UNIVERSITY_STUDENTS),
+  getUniversityDepartments: () => apiRequest(API_ENDPOINTS.UNIVERSITY_DEPARTMENTS),
+  getUniversityCourses: () => apiRequest(API_ENDPOINTS.UNIVERSITY_COURSES),
+  getUniversityFinance: () => apiRequest(API_ENDPOINTS.UNIVERSITY_FINANCE),
+  getUniversityReports: () => apiRequest(API_ENDPOINTS.UNIVERSITY_REPORTS),
+  getUniversityInstitutes: () => apiRequest(API_ENDPOINTS.UNIVERSITY_INSTITUTES),
+  getUniversityInstituteDetail: (domain) => apiRequest(API_ENDPOINTS.UNIVERSITY_INSTITUTE_DETAIL(domain))
 }

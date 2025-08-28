@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { api } from '../config/api.js';
 import './StudentDashboard.css';
 
 const currentMonth = () => {
@@ -94,13 +95,15 @@ const StudentDashboard = () => {
     try {
       setIsLoading(true);
       setError('');
-      const qs = buildQuery(reset);
-      const res = await fetch(`/api/opportunities?${qs}`);
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to load opportunities');
-      }
-      const data = await res.json();
+      const params = {};
+      if (filters.search) params.search = filters.search;
+      if (filters.status) params.status = filters.status;
+      if (filters.type) params.type = filters.type;
+      if (filters.location) params.location = filters.location;
+      params.limit = pagination.limit;
+      params.offset = reset ? 0 : pagination.offset;
+      
+      const data = await api.getOpportunities(params);
       const newItems = Array.isArray(data.opportunities) ? data.opportunities : [];
       setOpportunities(reset ? newItems : [...opportunities, ...newItems]);
       if (data.pagination) {
@@ -117,14 +120,7 @@ const StudentDashboard = () => {
 
   const fetchProfile = async (userId) => {
     try {
-      const res = await fetch('/api/student/profile', {
-        headers: { 'x-user-id': String(userId), 'Content-Type': 'application/json' }
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || 'Failed to load profile');
-      }
-      const data = await res.json();
+      const data = await api.getStudentProfile();
       const mapWithDefaults = (arr, key) => (arr || []).map(item => ({
         ...item,
         start: item.start || currentMonth(),
@@ -150,7 +146,6 @@ const StudentDashboard = () => {
   const saveProfile = async () => {
     try {
       setSaving(true);
-      const userData = JSON.parse(localStorage.getItem('userData') || localStorage.getItem('user'));
       const normalizeDates = arr => (arr || []).map(it => ({
         ...it,
         end: it.current ? '' : (it.end || currentMonth())
@@ -166,19 +161,7 @@ const StudentDashboard = () => {
         education: normalizeDates(portfolio.education),
         projects: portfolio.projects
       };
-      const res = await fetch('/api/student/profile', {
-        method: 'PUT',
-        headers: {
-          'x-user-id': String(userData.id),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body)
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || 'Failed to save profile');
-      }
-      await res.json();
+      await api.updateStudentProfile(body);
       alert('Profile saved');
     } catch (e) {
       alert(e.message || 'Failed to save profile');

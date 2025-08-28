@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
+import { api } from '../config/api.js'
 import './InstituteDetail.css'
 
 export default function InstituteDetail() {
@@ -13,10 +14,8 @@ export default function InstituteDetail() {
     (async () => {
       try {
         setLoading(true)
-        const user = JSON.parse(localStorage.getItem('user') || localStorage.getItem('userData') || '{}')
-        const r = await fetch(`/api/university/institutes/${encodeURIComponent(domain)}`, { headers: { 'x-user-id': String(user.id) } })
-        if (!r.ok) throw new Error((await r.json().catch(()=>({})))?.message || 'Failed to load')
-        setData(await r.json())
+        const data = await api.getUniversityInstituteDetail(domain)
+        setData(data)
       } catch (e) {
         setError(e.message || 'Failed to load')
       } finally {
