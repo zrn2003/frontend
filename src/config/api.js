@@ -71,14 +71,25 @@ export const apiRequest = async (url, options = {}) => {
       url, 
       status: response.status, 
       statusText: response.statusText,
-      contentType: response.headers.get('content-type')
+      contentType: response.headers.get('content-type'),
+      contentLength: response.headers.get('content-length')
     })
 
     // Check if response has content before parsing JSON
     const contentType = response.headers.get('content-type')
     if (!contentType || !contentType.includes('application/json')) {
-      console.error('Non-JSON response:', { contentType, status: response.status })
-      throw new Error(`Expected JSON response but got ${contentType}`)
+      console.error('Non-JSON response detected:', { 
+        url, 
+        contentType, 
+        status: response.status,
+        statusText: response.statusText
+      })
+      
+      // Try to get the response text to see what's being returned
+      const responseText = await response.text()
+      console.error('Response body:', responseText.substring(0, 500))
+      
+      throw new Error(`Expected JSON response but got ${contentType}. Status: ${response.status}`)
     }
 
     const data = await response.json()
