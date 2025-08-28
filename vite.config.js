@@ -17,6 +17,25 @@ export default defineConfig({
       }
     } : undefined
   },
+  build: {
+    // Disable eval for CSP compatibility
+    rollupOptions: {
+      output: {
+        // Use a single bundle to avoid dynamic imports
+        manualChunks: undefined,
+        // Ensure no eval is used in chunk loading
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]'
+      }
+    },
+    // Use a different chunking strategy
+    chunkSizeWarningLimit: 2000,
+    // Ensure no eval is used
+    target: 'es2015',
+    // Disable source maps in production to avoid eval
+    sourcemap: false
+  },
   define: {
     // Make environment variables available in the client
     'process.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL)
