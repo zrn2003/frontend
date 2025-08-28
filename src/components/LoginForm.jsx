@@ -1,70 +1,88 @@
-import { useState } from 'react'
-import { api } from '../config/api.js'
-import './LoginForm.css'
+import { useState } from "react";
+import { api } from "../config/api.js";
+import { useNavigate } from "react-router-dom";
+import "./LoginForm.css";
 
 export default function LoginForm({ onSubmit }) {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [remember, setRemember] = useState(false);
+  const [userType, setUserType] = useState("icm"); // 'icm' | 'student'
+  const navigate = useNavigate();
 
   async function handleSubmit(e) {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
+    e.preventDefault();
+    setLoading(true);
+    setError("");
     try {
-      const data = await api.login({ email, password })
-      
-      // Store user info in localStorage for session management
-      localStorage.setItem('user', JSON.stringify(data.user))
-      
-      // Redirect based on role
-      if (data && data.user && data.user.role) {
-        const role = data.user.role.toLowerCase()
-        if (role === 'admin' || role === 'manager') {
-          window.location.assign('/icm')
-        } else if (role === 'viewer') {
-          window.location.assign('/opportunities')
-        } else {
-          window.location.assign('/icm') // Default fallback
-        }
+      const data = await api.login({ email, password });
+
+      const storage = remember ? localStorage : sessionStorage;
+      storage.setItem("user", JSON.stringify(data.user));
+      storage.setItem("userRole", data.user?.role || "");
+      storage.setItem("userType", userType);
+
+      if (userType === "student") {
+        navigate("/student");
+      } else {
+        const role = data.user?.role?.toLowerCase();
+        if (role === "admin" || role === "manager") navigate("/icm");
+        else if (role === "viewer") navigate("/opportunities");
+        else navigate("/icm");
       }
-      
-      onSubmit && onSubmit({ email, password })
+
+      onSubmit && onSubmit({ email, password });
     } catch (e) {
-      setError(e.message || 'Something went wrong. Please try again.')
+      setError(e?.response?.data?.message || e?.message || "Login failed. Try again.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   return (
-    <div className="login-page">
-      <aside className="brand-panel">
+    <div className="login-wrapper">
+      {/* Left branding panel */}
+      <aside className="branding">
         <div className="brand-content">
-          <div className="logo-mark" aria-hidden>ICM</div>
+          <h1 className="brand-logo">ICM</h1>
           <h2>Industry Collaboration Manager</h2>
-          <p>Coordinate with partners, streamline approvals, and accelerate partnerships.</p>
-          <ul className="highlights">
-            <li>Secure role-based access</li>
-            <li>Real-time partner updates</li>
-            <li>Centralized records</li>
-          </ul>
+          <p>Empowering students & industry leaders to collaborate and grow together 🚀</p>
         </div>
       </aside>
-      <main className="form-panel">
+
+      {/* Right login panel */}
+      <main className="login-panel">
         <div className="login-card">
-          <div className="login-header">
-            <h1>Welcome back</h1>
-            <p className="subtitle">Sign in to continue</p>
+          <h2 className="login-title">Welcome Back 👋</h2>
+          <p className="login-subtitle">Sign in to continue</p>
+
+          {/* User type selector */}
+          <div className="user-tabs">
+            <button
+              type="button"
+              className={userType === "icm" ? "tab active" : "tab"}
+              onClick={() => setUserType("icm")}
+            >
+              🏭 ICM
+            </button>
+            <button
+              type="button"
+              className={userType === "student" ? "tab active" : "tab"}
+              onClick={() => setUserType("student")}
+            >
+              🎓 Student
+            </button>
           </div>
-          <form className="login-form" onSubmit={handleSubmit}>
+
+          <form onSubmit={handleSubmit} className="form">
             <label className="field">
               <span>Email</span>
               <input
                 type="email"
-                placeholder="you@company.com"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -73,9 +91,9 @@ export default function LoginForm({ onSubmit }) {
 
             <label className="field">
               <span>Password</span>
-              <div className="password-wrap">
+              <div className="password-box">
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -84,49 +102,41 @@ export default function LoginForm({ onSubmit }) {
                 <button
                   type="button"
                   className="toggle"
-                  onClick={() => setShowPassword(s => !s)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  onClick={() => setShowPassword((s) => !s)}
                 >
-                  {showPassword ? 'Hide' : 'Show'}
+                  {showPassword ? "🙈" : "👁️"}
                 </button>
               </div>
             </label>
 
-            {error && <div className="error" role="alert">{error}</div>}
+            {error && <div className="error">{error}</div>}
 
-            <button type="submit" className="submit" disabled={loading}>
-              {loading ? 'Signing in…' : 'Sign in'}
-            </button>
-
-            <div className="meta">
-              <label className="remember">
-                <input type="checkbox" />
-                <span>Remember me</span>
+            <div className="options">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                />
+                Remember me
               </label>
-              <a className="link" href="#">Forgot password?</a>
+              <a href="#" className="link">
+                Forgot password?
+              </a>
             </div>
+
+            <button type="submit" className="btn-submit" disabled={loading}>
+              {loading
+                ? "Signing in..."
+                : `Sign in as ${userType === "student" ? "Student" : "ICM"}`}
+            </button>
           </form>
-          <div className="footer-note">
-            <span>New to ICM?</span>
-            <a className="link" href="/signup">Create an account</a>
-          </div>
-          
-          {/* Demo credentials */}
-          <div style={{ 
-            marginTop: 'var(--spacing-4)', 
-            padding: 'var(--spacing-3)', 
-            background: 'var(--surface)', 
-            borderRadius: 'var(--radius-md)',
-            fontSize: 'var(--font-size-sm)',
-            color: 'var(--text-muted)'
-          }}>
-            <strong>Demo Accounts:</strong><br/>
-            Admin: admin@trustteams.com / admin123<br/>
-            Manager: manager@trustteams.com / manager123<br/>
-            Viewer: viewer@trustteams.com / viewer123
-          </div>
+
+          <p className="footer-text">
+            New here? <a href="/signup" className="link">Create an account</a>
+          </p>
         </div>
       </main>
     </div>
-  )
+  );
 }

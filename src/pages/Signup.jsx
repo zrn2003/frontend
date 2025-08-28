@@ -1,55 +1,77 @@
-import { useState } from 'react'
-import { api } from '../config/api.js'
-import '../components/LoginForm.css'
+import { useState } from "react";
+import { api } from "../config/api.js";
+import "../components/LoginForm.css"; // reuse same styles
 
 export default function Signup() {
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState("student"); // default role
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   async function handleSubmit(e) {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-    setSuccess('')
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setSuccess("");
     try {
-      const data = await api.signup({ name, email, password })
-      setSuccess('Account created. You can now sign in.')
-      setName('')
-      setEmail('')
-      setPassword('')
+      await api.signup({ name, email, password, role }); // include role
+      setSuccess("🎉 Account created successfully! You can now sign in.");
+      setName("");
+      setEmail("");
+      setPassword("");
+      setRole("student");
     } catch (e) {
-      setError(e.message || 'Signup failed')
+      setError(e.message || "Signup failed");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   return (
-    <div className="login-page">
-      <aside className="brand-panel">
+    <div className="login-wrapper">
+      {/* Left branding */}
+      <aside className="branding">
         <div className="brand-content">
-          <div className="logo-mark" aria-hidden>ICM</div>
+          <h1 className="brand-logo">ICM</h1>
           <h2>Industry Collaboration Manager</h2>
           <p>Join the platform to collaborate with partners efficiently.</p>
           <ul className="highlights">
-            <li>Secure role-based access</li>
-            <li>Real-time partner updates</li>
-            <li>Centralized records</li>
+            <li>✅ Secure role-based access</li>
+            <li>⚡ Real-time partner updates</li>
+            <li>📂 Centralized records</li>
           </ul>
         </div>
       </aside>
-      <main className="form-panel">
+
+      {/* Right form panel */}
+      <main className="login-panel">
         <div className="login-card">
-          <div className="login-header">
-            <h1>Create your account</h1>
-            <p className="subtitle">Sign up to get started</p>
-          </div>
-          <form className="login-form" onSubmit={handleSubmit}>
+          <h2 className="login-title">Create your account</h2>
+          <p className="login-subtitle">Sign up to get started</p>
+
+          <form onSubmit={handleSubmit} className="form">
+            {/* Role Selection */}
+            <div className="role-select">
+              <button
+                type="button"
+                className={`role-btn ${role === "student" ? "active" : ""}`}
+                onClick={() => setRole("student")}
+              >
+                🎓 Student
+              </button>
+              <button
+                type="button"
+                className={`role-btn ${role === "manager" ? "active" : ""}`}
+                onClick={() => setRole("manager")}
+              >
+                🏢 Industry Manager
+              </button>
+            </div>
+
             <label className="field">
               <span>Name</span>
               <input
@@ -57,6 +79,7 @@ export default function Signup() {
                 placeholder="Your name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                required
               />
             </label>
 
@@ -73,9 +96,9 @@ export default function Signup() {
 
             <label className="field">
               <span>Password</span>
-              <div className="password-wrap">
+              <div className="password-box">
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -84,30 +107,27 @@ export default function Signup() {
                 <button
                   type="button"
                   className="toggle"
-                  onClick={() => setShowPassword(s => !s)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  onClick={() => setShowPassword((s) => !s)}
                 >
-                  {showPassword ? 'Hide' : 'Show'}
+                  {showPassword ? "🙈" : "👁️"}
                 </button>
               </div>
             </label>
 
-            {error && <div className="error" role="alert">{error}</div>}
-            {success && <div className="error" style={{ background: 'rgba(16,185,129,.15)', borderColor: 'rgba(16,185,129,.35)', color: '#bbf7d0' }}>{success}</div>}
+            {error && <div className="error">{error}</div>}
+            {success && <div className="success">{success}</div>}
 
-            <button type="submit" className="submit" disabled={loading}>
-              {loading ? 'Creating…' : 'Create account'}
+            <button type="submit" className="btn-submit" disabled={loading}>
+              {loading ? "Creating…" : `Create ${role} account`}
             </button>
 
-            <div className="meta">
-              <span>Already have an account?</span>
-              <a className="link" href="/">Sign in</a>
-            </div>
+            <p className="footer-text">
+              Already have an account?
+              <a href="/" className="link"> Sign in</a>
+            </p>
           </form>
         </div>
       </main>
     </div>
-  )
+  );
 }
-
-

@@ -4,11 +4,17 @@ import { api } from '../config/api.js'
 export default function IcmDashboard() {
   const [user, setUser] = useState(null)
 
-  // Check if user is authenticated
+  // Check if user is authenticated and not a student
   useEffect(() => {
-    const userData = JSON.parse(localStorage.getItem('user') || '{}')
+    const stored = localStorage.getItem('user') || localStorage.getItem('userData') || '{}'
+    const userData = JSON.parse(stored)
     if (!userData.id) {
       window.location.href = '/'
+      return
+    }
+    const role = (userData.role || '').toLowerCase()
+    if (role === 'student') {
+      window.location.href = '/student'
       return
     }
     setUser(userData)
@@ -115,6 +121,9 @@ export default function IcmDashboard() {
             <a href="/" className="link" onClick={(e) => {
               e.preventDefault()
               localStorage.removeItem('user')
+              localStorage.removeItem('userData')
+              localStorage.removeItem('userRole')
+              localStorage.removeItem('userType')
               window.location.href = '/'
             }}>Logout</a>
           </div>
