@@ -27,7 +27,9 @@
     }
   ],
   "env": {
-    "VITE_API_BASE_URL": "https://trustteams-backend.vercel.app/api"
+    "VITE_API_BASE_URL": "https://trustteams-backend.vercel.app/api",
+    "VITE_API_TARGET": "https://trustteams-backend.vercel.app",
+    "NODE_ENV": "production"
   }
 }
 
