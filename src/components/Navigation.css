@@ -393,25 +393,6 @@
 }
 
 /* Responsive Design */
-@media (max-width: 1024px) {
-  .nav-container {
-    padding: 0 16px;
-  }
-  
-  .nav-menu-desktop {
-    gap: 1.5rem;
-  }
-  
-  .nav-link {
-    font-size: 0.85rem;
-    padding: 6px 10px;
-  }
-  
-  .user-menu-toggle {
-    min-width: 180px;
-  }
-}
-
 @media (max-width: 768px) {
   .nav-menu-desktop {
     display: none;
@@ -450,6 +431,7 @@
   .dropdown-arrow {
     display: none;
   }
+<<<<<<< HEAD
   
   .nav-container {
     padding: 0 12px;
@@ -577,6 +559,8 @@
     padding: 6px;
     font-size: 0.75rem;
   }
+=======
+>>>>>>> parent of a9d4892 (Enhanced responsive design: Full device compatibility with mobile, tablet, and desktop optimizations)
 }
 
 /* Scroll Effect */
