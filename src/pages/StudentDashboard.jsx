@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../config/api.js';
 import './StudentDashboard.css';
@@ -10,9 +10,9 @@ const currentMonth = () => {
   return `${y}-${m}`;
 };
 
-const emptyExperience = { company: '', title: '', start: currentMonth(), end: '', current: true, description: '' };
-const emptyEducation = { school: '', degree: '', field: '', start: currentMonth(), end: currentMonth(), current: false, description: '' };
-const emptyProject = { name: '', description: '', tech: [], link: '' };
+const emptyExperience = { company: '', title: '', location: '', employmentType: '', start: currentMonth(), end: '', current: true, description: '' };
+const emptyEducation = { school: '', degree: '', field: '', location: '', grade: '', start: currentMonth(), end: currentMonth(), current: false, description: '' };
+const emptyProject = { name: '', role: '', description: '', tech: [], link: '', start: currentMonth(), end: '', current: false };
 
 const StudentDashboard = () => {
   const [activeTab, setActiveTab] = useState('opportunities');
@@ -28,6 +28,7 @@ const StudentDashboard = () => {
     education: [],
     projects: []
   });
+  const [activities, setActivities] = useState([]);
   const [mentors] = useState([]);
   const [credentials] = useState([]);
   const [filters, setFilters] = useState({
@@ -44,6 +45,17 @@ const StudentDashboard = () => {
   const [pagination, setPagination] = useState({ total: 0, limit: 10, offset: 0, pages: 0 });
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
+  const syncTimerRef = useRef(null);
+  const [profileTab, setProfileTab] = useState('info');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [notificationItems, setNotificationItems] = useState([]);
+  const [messageItems, setMessageItems] = useState([]);
+  const [showNotif, setShowNotif] = useState(false);
+  const [showMsgs, setShowMsgs] = useState(false);
+  const notifRef = useRef(null);
+  const msgRef = useRef(null);
+  const [savingEntryKey, setSavingEntryKey] = useState('');
+  const [savedEntryKey, setSavedEntryKey] = useState('');
 
   useEffect(() => {
     const rawUser = localStorage.getItem('userData') || localStorage.getItem('user');
@@ -61,6 +73,41 @@ const StudentDashboard = () => {
     setUser(parsed);
     fetchOpportunities(true);
     fetchProfile();
+    // Seed dynamic notifications/messages (could be fetched from API later)
+    const savedNotifs = JSON.parse(localStorage.getItem('tt_notifications') || '[]');
+    const savedMsgs = JSON.parse(localStorage.getItem('tt_messages') || '[]');
+    if (savedNotifs.length === 0) {
+      const seed = [
+        { id: 'n1', text: 'New internship posted in your area', read: false, at: new Date().toISOString() },
+        { id: 'n2', text: 'Profile completeness reached 60%', read: false, at: new Date().toISOString() }
+      ];
+      setNotificationItems(seed);
+      localStorage.setItem('tt_notifications', JSON.stringify(seed));
+    } else {
+      setNotificationItems(savedNotifs);
+    }
+    if (savedMsgs.length === 0) {
+      const seedM = [
+        { id: 'm1', from: 'Mentor Jane', preview: 'Happy to connect!', read: false, at: new Date().toISOString() }
+      ];
+      setMessageItems(seedM);
+      localStorage.setItem('tt_messages', JSON.stringify(seedM));
+    } else {
+      setMessageItems(savedMsgs);
+    }
+    const onDocClick = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target) && msgRef.current && !msgRef.current.contains(e.target)) {
+        setShowNotif(false);
+        setShowMsgs(false);
+      }
+    };
+    const onKey = (e) => { if (e.key === 'Escape') { setShowNotif(false); setShowMsgs(false); } };
+    document.addEventListener('click', onDocClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('click', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
@@ -68,6 +115,131 @@ const StudentDashboard = () => {
     document.body.classList.toggle('dark', isDark);
     return () => document.body.classList.remove('dark');
   }, [isDark]);
+
+  // Simple skill extraction from free text or lists
+  const extractSkillsFromText = (textOrArray) => {
+    if (!textOrArray) return [];
+    const known = [
+      'javascript','typescript','react','redux','next.js','node','express','postgres','mysql','mongodb','html','css','tailwind','vite','git','github',
+      'python','django','flask','pandas','numpy','ml','machine learning','data science','java','spring','c++','c#','go','rust',
+      'aws','gcp','azure','docker','kubernetes','sql','nosql','graphql','rest','testing','jest','cypress'
+    ];
+    const pushIfKnown = (acc, token) => {
+      const t = String(token || '').toLowerCase().trim();
+      if (!t) return;
+      if (known.includes(t)) acc.add(t);
+    };
+    const extracted = new Set();
+    if (Array.isArray(textOrArray)) {
+      textOrArray.forEach(tok => pushIfKnown(extracted, tok));
+    } else {
+      const text = String(textOrArray || '').toLowerCase();
+      known.forEach(k => { if (text.includes(k)) extracted.add(k); });
+    }
+    return Array.from(extracted).slice(0, 50);
+  };
+
+  const scheduleAutoSync = () => {
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(async () => {
+      try {
+        const normalizeDates = arr => (arr || []).map(it => ({
+          ...it,
+          end: it.current ? '' : (it.end || currentMonth())
+        }));
+        const body = {
+          githubUrl: portfolio.githubUrl,
+          linkedinUrl: portfolio.linkedinUrl,
+          websiteUrl: portfolio.websiteUrl,
+          resumeUrl: portfolio.resumeUrl,
+          summary: portfolio.summary,
+          skills: portfolio.skills,
+          experiences: normalizeDates(portfolio.experiences),
+          education: normalizeDates(portfolio.education),
+          projects: portfolio.projects
+        };
+        await api.updateStudentProfile(body);
+        console.debug('[AutoSync] Profile synced');
+      } catch (e) {
+        console.warn('[AutoSync] Failed:', e.message);
+      }
+    }, 800);
+  };
+
+  const normalizeDates = (arr) => (arr || []).map(it => ({
+    ...it,
+    end: it.current ? '' : (it.end || currentMonth())
+  }));
+
+  const saveEntry = async (type, index) => {
+    try {
+      const key = `${type}-${index}`;
+      setSavingEntryKey(key);
+      const body = {
+        githubUrl: portfolio.githubUrl,
+        linkedinUrl: portfolio.linkedinUrl,
+        websiteUrl: portfolio.websiteUrl,
+        resumeUrl: portfolio.resumeUrl,
+        summary: portfolio.summary,
+        skills: portfolio.skills,
+        experiences: normalizeDates(portfolio.experiences),
+        education: normalizeDates(portfolio.education),
+        projects: normalizeDates(portfolio.projects)
+      };
+      await api.updateStudentProfile(body);
+      setSavedEntryKey(key);
+      setTimeout(() => setSavedEntryKey(''), 1500);
+    } catch (e) {
+      alert(e.message || 'Failed to save item');
+    } finally {
+      setSavingEntryKey('');
+    }
+  };
+
+  const validateDateRange = (start, end, isCurrent) => {
+    if (!start) return { valid: false, message: 'Start date required' };
+    if (isCurrent) return { valid: true };
+    if (!end) return { valid: false, message: 'End date required' };
+    if (start > end) return { valid: false, message: 'End date must be after start' };
+    return { valid: true };
+  };
+
+  const applySkillUpdatesFromActivity = (payload) => {
+    const derived = new Set(portfolio.skills || []);
+    if (payload?.requirements) {
+      extractSkillsFromText(payload.requirements).forEach(s => derived.add(s));
+    }
+    if (payload?.tech) {
+      extractSkillsFromText(payload.tech).forEach(s => derived.add(s));
+    }
+    if (payload?.text) {
+      extractSkillsFromText(payload.text).forEach(s => derived.add(s));
+    }
+    const nextSkills = Array.from(derived);
+    setPortfolio(prev => ({ ...prev, skills: nextSkills }));
+    scheduleAutoSync();
+  };
+
+  const logActivity = (type, payload = {}) => {
+    const entry = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      type,
+      at: new Date().toISOString(),
+      payload
+    };
+    setActivities(prev => [entry, ...prev].slice(0, 200));
+    applySkillUpdatesFromActivity(payload);
+  };
+
+  // Form helpers and validation
+  const isValidUrl = (value) => {
+    if (!value) return true;
+    try { new URL(value); return true; } catch { return false; }
+  };
+  const isValidEmail = (value) => {
+    if (!value) return true;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  };
 
   const computeProfileCompleteness = () => {
     let score = 0; let total = 6;
@@ -79,8 +251,6 @@ const StudentDashboard = () => {
     if (portfolio.githubUrl || portfolio.linkedinUrl || portfolio.websiteUrl || portfolio.resumeUrl) score++;
     return Math.round((score / total) * 100);
   };
-
-
 
   const fetchOpportunities = async (reset = false) => {
     try {
@@ -137,23 +307,27 @@ const StudentDashboard = () => {
   const saveProfile = async () => {
     try {
       setSaving(true);
-      const normalizeDates = arr => (arr || []).map(it => ({
-        ...it,
-        end: it.current ? '' : (it.end || currentMonth())
-      }));
+      // Enrich skills from current portfolio before saving
+      const skillSet = new Set(portfolio.skills || []);
+      (portfolio.projects || []).forEach(p => (p?.tech || []).forEach(t => skillSet.add(String(t).toLowerCase())));
+      (portfolio.experiences || []).forEach(exp => extractSkillsFromText(`${exp.title} ${exp.description}`).forEach(s => skillSet.add(s)));
+      (portfolio.education || []).forEach(ed => extractSkillsFromText(`${ed.degree} ${ed.field} ${ed.description}`).forEach(s => skillSet.add(s)));
+      const mergedSkills = Array.from(skillSet);
       const body = {
         githubUrl: portfolio.githubUrl,
         linkedinUrl: portfolio.linkedinUrl,
         websiteUrl: portfolio.websiteUrl,
         resumeUrl: portfolio.resumeUrl,
         summary: portfolio.summary,
-        skills: portfolio.skills,
+        skills: mergedSkills,
         experiences: normalizeDates(portfolio.experiences),
         education: normalizeDates(portfolio.education),
-        projects: portfolio.projects
+        projects: normalizeDates(portfolio.projects)
       };
       await api.updateStudentProfile(body);
       alert('Profile saved');
+      setPortfolio(prev => ({ ...prev, skills: mergedSkills }));
+      logActivity('profile.save', { text: 'Profile saved', skillsAdded: mergedSkills.length });
     } catch (e) {
       alert(e.message || 'Failed to save profile');
     } finally {
@@ -177,34 +351,113 @@ const StudentDashboard = () => {
   };
 
   const addSkill = (skill) => {
-    const s = skill.trim();
+    const s = String(skill || '').trim().toLowerCase();
     if (!s) return;
-    setPortfolio(prev => ({ ...prev, skills: Array.from(new Set([...(prev.skills || []), s])) }));
+    setPortfolio(prev => ({ ...prev, skills: Array.from(new Set((prev.skills || []).map(x=>String(x).toLowerCase()).concat([s]))) }));
+    logActivity('skill.add', { text: s });
+    scheduleAutoSync();
   };
 
   const removeSkill = (skill) => {
-    setPortfolio(prev => ({ ...prev, skills: (prev.skills || []).filter(x => x !== skill) }));
+    const target = String(skill || '').toLowerCase();
+    setPortfolio(prev => ({ ...prev, skills: (prev.skills || []).filter(x => String(x).toLowerCase() !== target) }));
+    logActivity('skill.remove', { text: skill });
+    scheduleAutoSync();
   };
 
   const addItem = (key, tmpl) => {
     setPortfolio(prev => ({ ...prev, [key]: [...(prev[key] || []), tmpl] }));
+    logActivity(`${key}.add`, { text: `Added to ${key}` });
+    scheduleAutoSync();
   };
   const updateItem = (key, idx, patch) => {
     setPortfolio(prev => ({
       ...prev,
       [key]: prev[key].map((it, i) => (i === idx ? { ...it, ...patch } : it))
     }));
+    // If updating projects tech or descriptions, attempt skill extraction
+    if (key === 'projects') {
+      const affected = { ...patch };
+      applySkillUpdatesFromActivity({ tech: affected.tech, text: `${affected.name || ''} ${affected.description || ''}` });
+    }
   };
   const removeItem = (key, idx) => {
     setPortfolio(prev => ({ ...prev, [key]: prev[key].filter((_, i) => i !== idx) }));
+    logActivity(`${key}.remove`, { text: `Removed from ${key}` });
+    scheduleAutoSync();
   };
 
-  const handleApplyToOpportunity = async () => {
+  const handleApplyToOpportunity = async (oppId) => {
+    const opp = opportunities.find(o => o.id === oppId);
     alert('Application submitted!');
+    if (opp) {
+      logActivity('opportunity.apply', { id: oppId, text: `${opp.title} ${opp.description || ''}`, requirements: opp.requirements || [] });
+    } else {
+      logActivity('opportunity.apply', { id: oppId });
+    }
   };
 
-  const handleSaveOpportunity = async () => {
+  const handleSaveOpportunity = async (oppId) => {
+    const opp = opportunities.find(o => o.id === oppId);
     alert('Opportunity saved!');
+    if (opp) {
+      logActivity('opportunity.save', { id: oppId, text: `${opp.title}`, requirements: opp.requirements || [] });
+    } else {
+      logActivity('opportunity.save', { id: oppId });
+    }
+  };
+
+  const computeSkillCounts = () => {
+    const counts = {};
+    (activities || []).forEach(a => {
+      const skills = extractSkillsFromText(a.payload?.requirements || a.payload?.tech || a.payload?.text);
+      skills.forEach(s => {
+        counts[s] = (counts[s] || 0) + 1;
+      });
+    });
+    return counts;
+  };
+
+  const renderActivityTab = () => {
+    const counts = computeSkillCounts();
+    const topSkills = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0, 20);
+    return (
+      <div className="tab-content">
+        <div className="li-card">
+          <h3 className="li-title">Recent Activity</h3>
+          {activities.length === 0 ? (
+            <div className="no-credentials"><h3>No activities yet</h3><p>Apply, save, or edit your profile to see updates.</p></div>
+          ) : (
+            <div className="activity-list">
+              {activities.map(a => (
+                <div key={a.id} className="activity-item">
+                  <div className="activity-meta">
+                    <span className="activity-type">{a.type}</span>
+                    <span className="activity-time">{new Date(a.at).toLocaleString()}</span>
+                  </div>
+                  {a.payload?.text && <div className="activity-text">{a.payload.text}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="li-card" style={{ marginTop: 16 }}>
+          <h3 className="li-title">Skills Growth Graph</h3>
+          {topSkills.length === 0 ? (
+            <p>No skills detected yet. Engage with opportunities or add projects.</p>
+          ) : (
+            <div className="skills-graph">
+              {topSkills.map(([skill, count]) => (
+                <span key={skill} className="skill-badge" title={`Derived from ${count} activities`}>
+                  {skill} ({count})
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   const renderOpportunitiesTab = () => (
@@ -395,173 +648,305 @@ const StudentDashboard = () => {
 
   const renderPortfolioTab = () => (
     <div className="tab-content">
-      <div className="profile-layout">
-        {/* Left column: identity, about, links */}
-        <aside className="profile-left">
-          {renderProfileHeader()}
-
-          <section className="li-card">
-            <h3 className="li-title">About</h3>
-            <textarea
-              className="form-input"
-              value={portfolio.summary}
-              onChange={(e) => setPortfolio(prev => ({ ...prev, summary: e.target.value }))}
-              placeholder="Write a short bio that highlights your goals and strengths"
-              rows={5}
-            />
-          </section>
-
-          <section className="li-card">
-            <h3 className="li-title">Links</h3>
-            <div className="li-links">
-              <input
-                className="form-input"
-                placeholder="GitHub URL"
-                value={portfolio.githubUrl}
-                onChange={(e) => setPortfolio(prev => ({ ...prev, githubUrl: e.target.value }))}
-              />
-              <input
-                className="form-input"
-                placeholder="LinkedIn URL"
-                value={portfolio.linkedinUrl}
-                onChange={(e) => setPortfolio(prev => ({ ...prev, linkedinUrl: e.target.value }))}
-              />
-              <input
-                className="form-input"
-                placeholder="Personal Website URL"
-                value={portfolio.websiteUrl}
-                onChange={(e) => setPortfolio(prev => ({ ...prev, websiteUrl: e.target.value }))}
-              />
-              <input
-                className="form-input"
-                placeholder="Resume URL"
-                value={portfolio.resumeUrl}
-                onChange={(e) => setPortfolio(prev => ({ ...prev, resumeUrl: e.target.value }))}
-              />
+      <div className="sd-shell">
+        <aside className={`sd-sidebar ${sidebarOpen ? 'open' : ''}`}>
+          <button className="sd-sidebar-toggle btn btn-secondary" onClick={()=>setSidebarOpen(v=>!v)}>{sidebarOpen ? 'Hide' : 'Show'}</button>
+          <nav className="sd-nav">
+            <button className={`sd-nav-item ${profileTab==='info'?'active':''}`} onClick={()=>setProfileTab('info')}>Profile Info</button>
+            <button className={`sd-nav-item ${profileTab==='education'?'active':''}`} onClick={()=>setProfileTab('education')}>Education</button>
+            <button className={`sd-nav-item ${profileTab==='experience'?'active':''}`} onClick={()=>setProfileTab('experience')}>Experience</button>
+            <button className={`sd-nav-item ${profileTab==='skills'?'active':''}`} onClick={()=>setProfileTab('skills')}>Skills</button>
+            <button className={`sd-nav-item ${profileTab==='projects'?'active':''}`} onClick={()=>setProfileTab('projects')}>Projects</button>
+            <button className="sd-nav-item" onClick={()=>{ window.print(); }}>Export PDF</button>
+          </nav>
+          <div className="sd-preview">
+            <h4>Live Preview</h4>
+            <div className="preview-card">
+              <div className="preview-name">{user?.name || 'Student Name'}</div>
+              <div className="preview-links">
+                {portfolio.githubUrl && <a href={portfolio.githubUrl} target="_blank" rel="noreferrer">GitHub</a>}
+                {portfolio.linkedinUrl && <a href={portfolio.linkedinUrl} target="_blank" rel="noreferrer">LinkedIn</a>}
+                {portfolio.websiteUrl && <a href={portfolio.websiteUrl} target="_blank" rel="noreferrer">Website</a>}
+                {user?.email && <a href={`mailto:${user.email}`}>Email</a>}
+              </div>
+              {portfolio.summary && <div className="preview-summary">{portfolio.summary}</div>}
+              {(portfolio.skills || []).slice(0,8).length>0 && (
+                <div className="preview-skills">
+                  {(portfolio.skills || []).slice(0,8).map(s => <span key={s} className="preview-skill">{s}</span>)}
+                </div>
+              )}
             </div>
-          </section>
-
-          <div className="li-actions">
-            <button className="btn btn-primary" onClick={saveProfile} disabled={saving}>
-              {saving ? 'Saving...' : 'Save Profile'}
-            </button>
           </div>
         </aside>
 
-        {/* Right column: experiences, education, projects, skills */}
-        <main className="profile-right">
-          <section className="li-card">
-            <div className="li-card-header">
-              <h3 className="li-title">Experience</h3>
-              <button className="btn btn-secondary" onClick={()=>addItem('experiences', { ...emptyExperience })}>+ Add</button>
-            </div>
-            <div className="projects-list">
-              {(portfolio.experiences || []).map((exp, i) => (
-                <div key={i} className="project-item">
-                  <div className="grid-2">
-                    <input className="form-input" placeholder="Company" value={exp.company} onChange={(e)=>updateItem('experiences', i, { company: e.target.value })} />
-                    <input className="form-input" placeholder="Title" value={exp.title} onChange={(e)=>updateItem('experiences', i, { title: e.target.value })} />
-                  </div>
-                  <div className="grid-2">
-                    <label style={{ width: '100%' }}>
-                      <span className="mini-label">Start</span>
-                      <input className="form-input" type="month" value={exp.start} onChange={(e)=>updateItem('experiences', i, { start: e.target.value })} />
-                    </label>
-                    <label style={{ width: '100%' }}>
-                      <span className="mini-label">End</span>
-                      <input className="form-input" type="month" value={exp.end} onFocus={()=>{ if(!exp.end && !exp.current){ updateItem('experiences', i, { end: currentMonth() }); } }} onChange={(e)=>updateItem('experiences', i, { end: e.target.value, current: false })} disabled={exp.current} />
-                    </label>
-                  </div>
-                  <label className="inline-check">
-                    <input type="checkbox" checked={!!exp.current} onChange={(e)=>updateItem('experiences', i, { current: e.target.checked, end: e.target.checked ? '' : (exp.end || currentMonth()) })} />
-                    <span>Currently working here</span>
-                  </label>
-                  <textarea className="form-input" placeholder="Description" rows={3} value={exp.description} onChange={(e)=>updateItem('experiences', i, { description: e.target.value })} />
-                  <div style={{ textAlign: 'right' }}>
-                    <button className="btn btn-secondary" onClick={()=>removeItem('experiences', i)}>Remove</button>
-                  </div>
+        <main className="sd-main">
+          {profileTab === 'info' && (
+            <>
+              {renderProfileHeader()}
+              <section className="li-card">
+                <div className="li-card-header"><h3 className="li-title">About</h3></div>
+                <textarea
+                  className="form-input"
+                  value={portfolio.summary}
+                  onChange={(e) => { setPortfolio(prev => ({ ...prev, summary: e.target.value })); scheduleAutoSync(); }}
+                  placeholder="Write a short bio that highlights your goals and strengths"
+                  rows={5}
+                />
+              </section>
+              <section className="li-card">
+                <div className="li-card-header"><h3 className="li-title">Contacts & Links</h3></div>
+                <div className="li-links">
+                  <input
+                    className={`form-input ${!isValidUrl(portfolio.githubUrl)?'invalid':''}`}
+                    placeholder="GitHub URL"
+                    value={portfolio.githubUrl}
+                    onChange={(e) => { setPortfolio(prev => ({ ...prev, githubUrl: e.target.value })); scheduleAutoSync(); }}
+                  />
+                  <input
+                    className={`form-input ${!isValidUrl(portfolio.linkedinUrl)?'invalid':''}`}
+                    placeholder="LinkedIn URL"
+                    value={portfolio.linkedinUrl}
+                    onChange={(e) => { setPortfolio(prev => ({ ...prev, linkedinUrl: e.target.value })); scheduleAutoSync(); }}
+                  />
+                  <input
+                    className={`form-input ${!isValidUrl(portfolio.websiteUrl)?'invalid':''}`}
+                    placeholder="Personal Website URL"
+                    value={portfolio.websiteUrl}
+                    onChange={(e) => { setPortfolio(prev => ({ ...prev, websiteUrl: e.target.value })); scheduleAutoSync(); }}
+                  />
+                  <input
+                    className={`form-input ${!isValidUrl(portfolio.resumeUrl)?'invalid':''}`}
+                    placeholder="Resume URL"
+                    value={portfolio.resumeUrl}
+                    onChange={(e) => { setPortfolio(prev => ({ ...prev, resumeUrl: e.target.value })); scheduleAutoSync(); }}
+                  />
+                  <input
+                    className={`form-input ${!isValidEmail(user?.email)?'invalid':''}`}
+                    placeholder="Email"
+                    value={user?.email || ''}
+                    onChange={()=>{}}
+                    disabled
+                  />
                 </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="li-card">
-            <div className="li-card-header">
-              <h3 className="li-title">Education</h3>
-              <button className="btn btn-secondary" onClick={()=>addItem('education', { ...emptyEducation })}>+ Add</button>
-            </div>
-            <div className="projects-list">
-              {(portfolio.education || []).map((ed, i) => (
-                <div key={i} className="project-item">
-                  <input className="form-input" placeholder="School / University" value={ed.school} onChange={(e)=>updateItem('education', i, { school: e.target.value })} />
-                  <div className="grid-2">
-                    <input className="form-input" placeholder="Degree" value={ed.degree} onChange={(e)=>updateItem('education', i, { degree: e.target.value })} />
-                    <input className="form-input" placeholder="Field of Study" value={ed.field} onChange={(e)=>updateItem('education', i, { field: e.target.value })} />
-                  </div>
-                  <div className="grid-2">
-                    <label style={{ width: '100%' }}>
-                      <span className="mini-label">Start</span>
-                      <input className="form-input" type="month" value={ed.start} onChange={(e)=>updateItem('education', i, { start: e.target.value })} />
-                    </label>
-                    <label style={{ width: '100%' }}>
-                      <span className="mini-label">End</span>
-                      <input className="form-input" type="month" value={ed.end} onFocus={()=>{ if(!ed.end && !ed.current){ updateItem('education', i, { end: currentMonth() }); } }} onChange={(e)=>updateItem('education', i, { end: e.target.value, current: false })} disabled={ed.current} />
-                    </label>
-                  </div>
-                  <label className="inline-check">
-                    <input type="checkbox" checked={!!ed.current} onChange={(e)=>updateItem('education', i, { current: e.target.checked, end: e.target.checked ? '' : (ed.end || currentMonth()) })} />
-                    <span>Currently studying</span>
-                  </label>
-                  <textarea className="form-input" placeholder="Description" rows={3} value={ed.description} onChange={(e)=>updateItem('education', i, { description: e.target.value })} />
-                  <div style={{ textAlign: 'right' }}>
-                    <button className="btn btn-secondary" onClick={()=>removeItem('education', i)}>Remove</button>
-                  </div>
+                <div className="li-actions">
+                  <button className="btn btn-primary" onClick={saveProfile} disabled={saving}>
+                    {saving ? 'Saving...' : 'Save Profile'}
+                  </button>
                 </div>
-              ))}
-            </div>
-          </section>
+              </section>
+            </>
+          )}
 
-          <section className="li-card">
-            <div className="li-card-header">
-              <h3 className="li-title">Projects</h3>
-              <button className="btn btn-secondary" onClick={()=>addItem('projects', { ...emptyProject })}>+ Add</button>
-            </div>
-            <div className="projects-list">
-              {(portfolio.projects || []).map((pr, i) => (
-                <div key={i} className="project-item">
-                  <input className="form-input" placeholder="Project Name" value={pr.name} onChange={(e)=>updateItem('projects', i, { name: e.target.value })} />
-                  <textarea className="form-input" placeholder="Description" rows={3} value={pr.description} onChange={(e)=>updateItem('projects', i, { description: e.target.value })} />
-                  <input className="form-input" placeholder="Tech (comma separated)" value={(pr.tech || []).join(', ')} onChange={(e)=>updateItem('projects', i, { tech: e.target.value.split(',').map(s=>s.trim()).filter(Boolean) })} />
-                  <input className="form-input" placeholder="Link (GitHub/Live)" value={pr.link} onChange={(e)=>updateItem('projects', i, { link: e.target.value })} />
-                  <div style={{ textAlign: 'right' }}>
-                    <button className="btn btn-secondary" onClick={()=>removeItem('projects', i)}>Remove</button>
+          {profileTab === 'education' && (
+            <section className="li-card">
+              <div className="li-card-header">
+                <h3 className="li-title">Education</h3>
+                <button className="btn btn-secondary" onClick={()=>addItem('education', { ...emptyEducation })}>+ Add</button>
+              </div>
+              <div className="timeline">
+                {(portfolio.education || []).map((ed, i) => (
+                  <div key={i} className="timeline-item">
+                    <div className="timeline-dot" />
+                    <div className="timeline-content">
+                      <div className="form-row grid-2">
+                        <label>
+                          <span className="mini-label">School / University <span className="required">*</span></span>
+                          <input className="form-input" placeholder="e.g., IIT Bombay" value={ed.school} onChange={(e)=>updateItem('education', i, { school: e.target.value })} />
+                        </label>
+                        <label>
+                          <span className="mini-label">Location</span>
+                          <input className="form-input" placeholder="City, Country" value={ed.location || ''} onChange={(e)=>updateItem('education', i, { location: e.target.value })} />
+                        </label>
+                      </div>
+                      <div className="form-row grid-2">
+                        <label>
+                          <span className="mini-label">Degree <span className="required">*</span></span>
+                          <input className="form-input" placeholder="e.g., B.Tech" value={ed.degree} onChange={(e)=>updateItem('education', i, { degree: e.target.value })} />
+                        </label>
+                        <label>
+                          <span className="mini-label">Field of Study</span>
+                          <input className="form-input" placeholder="e.g., Computer Science" value={ed.field} onChange={(e)=>updateItem('education', i, { field: e.target.value })} />
+                        </label>
+                      </div>
+                      <div className="grid-2">
+                        <label style={{ width: '100%' }}>
+                          <span className="mini-label">Start</span>
+                          <input className="form-input" type="month" value={ed.start} onChange={(e)=>updateItem('education', i, { start: e.target.value })} />
+                        </label>
+                        <label style={{ width: '100%' }}>
+                          <span className="mini-label">End</span>
+                          <input className="form-input" type="month" value={ed.end} onFocus={()=>{ if(!ed.end && !ed.current){ updateItem('education', i, { end: currentMonth() }); } }} onChange={(e)=>updateItem('education', i, { end: e.target.value, current: false })} disabled={ed.current} />
+                        </label>
+                      </div>
+                      {(() => { const v = validateDateRange(ed.start, ed.end, ed.current); return !v.valid ? (<div className="field-error">{v.message}</div>) : null; })()}
+                      <label className="inline-check">
+                        <input type="checkbox" checked={!!ed.current} onChange={(e)=>updateItem('education', i, { current: e.target.checked, end: e.target.checked ? '' : (ed.end || currentMonth()) })} />
+                        <span>Currently studying</span>
+                      </label>
+                      <div className="form-row grid-2">
+                        <label>
+                          <span className="mini-label">Grade / GPA</span>
+                          <input className="form-input" placeholder="e.g., 8.5 CGPA" value={ed.grade || ''} onChange={(e)=>updateItem('education', i, { grade: e.target.value })} />
+                        </label>
+                        <label>
+                          <span className="mini-label">Description</span>
+                          <textarea className="form-input" placeholder="Honors, societies, coursework..." rows={3} value={ed.description} onChange={(e)=>updateItem('education', i, { description: e.target.value })} />
+                        </label>
+                      </div>
+                      <div className="row-actions" style={{ gap: 8 }}>
+                        <button className="btn btn-primary" disabled={!validateDateRange(ed.start, ed.end, ed.current).valid || savingEntryKey===`education-${i}`} onClick={()=>saveEntry('education', i)}>
+                          {savingEntryKey===`education-${i}` ? 'Saving...' : (savedEntryKey===`education-${i}` ? 'Saved' : 'Save')}
+                        </button>
+                        <button className="btn btn-secondary" onClick={()=>removeItem('education', i)}>Remove</button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </section>
+                ))}
+              </div>
+            </section>
+          )}
 
-          <section className="li-card">
-            <div className="li-card-header">
-              <h3 className="li-title">Skills</h3>
-            </div>
-            <div className="skills-graph">
-              {(portfolio.skills || []).map(skill => (
-                <span key={skill} className="skill-badge" onClick={() => removeSkill(skill)} title="Remove">
-                  {skill}
-                </span>
-              ))}
-            </div>
-            <div style={{ marginTop: 12 }}>
-              <input id="newSkill" className="form-input" placeholder="Add a skill and press Enter" onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  addSkill(e.currentTarget.value);
-                  e.currentTarget.value = '';
-                }
-              }} />
-            </div>
-          </section>
+          {profileTab === 'experience' && (
+            <section className="li-card">
+              <div className="li-card-header">
+                <h3 className="li-title">Experience</h3>
+                <button className="btn btn-secondary" onClick={()=>addItem('experiences', { ...emptyExperience })}>+ Add</button>
+              </div>
+              <div className="timeline">
+                {(portfolio.experiences || []).map((exp, i) => (
+                  <div key={i} className="timeline-item">
+                    <div className="timeline-dot" />
+                    <div className="timeline-content">
+                      <div className="form-row grid-2">
+                        <label>
+                          <span className="mini-label">Company <span className="required">*</span></span>
+                          <input className="form-input" placeholder="e.g., Google" value={exp.company} onChange={(e)=>updateItem('experiences', i, { company: e.target.value })} />
+                        </label>
+                        <label>
+                          <span className="mini-label">Title <span className="required">*</span></span>
+                          <input className="form-input" placeholder="e.g., Software Engineer" value={exp.title} onChange={(e)=>updateItem('experiences', i, { title: e.target.value })} />
+                        </label>
+                      </div>
+                      <div className="form-row grid-2">
+                        <label>
+                          <span className="mini-label">Location</span>
+                          <input className="form-input" placeholder="City, Country / Remote" value={exp.location || ''} onChange={(e)=>updateItem('experiences', i, { location: e.target.value })} />
+                        </label>
+                        <label>
+                          <span className="mini-label">Employment Type</span>
+                          <select className="form-input" value={exp.employmentType || ''} onChange={(e)=>updateItem('experiences', i, { employmentType: e.target.value })}>
+                            <option value="">Select</option>
+                            <option value="Full-time">Full-time</option>
+                            <option value="Part-time">Part-time</option>
+                            <option value="Internship">Internship</option>
+                            <option value="Contract">Contract</option>
+                            <option value="Freelance">Freelance</option>
+                          </select>
+                        </label>
+                      </div>
+                      <div className="grid-2">
+                        <label style={{ width: '100%' }}>
+                          <span className="mini-label">Start</span>
+                          <input className="form-input" type="month" value={exp.start} onChange={(e)=>updateItem('experiences', i, { start: e.target.value })} />
+                        </label>
+                        <label style={{ width: '100%' }}>
+                          <span className="mini-label">End</span>
+                          <input className="form-input" type="month" value={exp.end} onFocus={()=>{ if(!exp.end && !exp.current){ updateItem('experiences', i, { end: currentMonth() }); } }} onChange={(e)=>updateItem('experiences', i, { end: e.target.value, current: false })} disabled={exp.current} />
+                        </label>
+                      </div>
+                      {(() => { const v = validateDateRange(exp.start, exp.end, exp.current); return !v.valid ? (<div className="field-error">{v.message}</div>) : null; })()}
+                      <label className="inline-check">
+                        <input type="checkbox" checked={!!exp.current} onChange={(e)=>updateItem('experiences', i, { current: e.target.checked, end: e.target.checked ? '' : (exp.end || currentMonth()) })} />
+                        <span>Currently working here</span>
+                      </label>
+                      <textarea className="form-input" placeholder="Describe your responsibilities, achievements, tech used..." rows={3} value={exp.description} onChange={(e)=>updateItem('experiences', i, { description: e.target.value })} />
+                      <div className="row-actions" style={{ gap: 8 }}>
+                        <button className="btn btn-primary" disabled={!validateDateRange(exp.start, exp.end, exp.current).valid || savingEntryKey===`experiences-${i}`} onClick={()=>saveEntry('experiences', i)}>
+                          {savingEntryKey===`experiences-${i}` ? 'Saving...' : (savedEntryKey===`experiences-${i}` ? 'Saved' : 'Save')}
+                        </button>
+                        <button className="btn btn-secondary" onClick={()=>removeItem('experiences', i)}>Remove</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {profileTab === 'projects' && (
+            <section className="li-card">
+              <div className="li-card-header">
+                <h3 className="li-title">Projects</h3>
+                <button className="btn btn-secondary" onClick={()=>addItem('projects', { ...emptyProject })}>+ Add</button>
+              </div>
+              <div className="timeline">
+                {(portfolio.projects || []).map((pr, i) => (
+                  <div key={i} className="timeline-item">
+                    <div className="timeline-dot" />
+                    <div className="timeline-content">
+                      <div className="form-row grid-2">
+                        <label>
+                          <span className="mini-label">Project Name <span className="required">*</span></span>
+                          <input className="form-input" placeholder="e.g., Smart Attendance System" value={pr.name} onChange={(e)=>updateItem('projects', i, { name: e.target.value })} />
+                        </label>
+                        <label>
+                          <span className="mini-label">Role</span>
+                          <input className="form-input" placeholder="e.g., Frontend Developer" value={pr.role || ''} onChange={(e)=>updateItem('projects', i, { role: e.target.value })} />
+                        </label>
+                      </div>
+                      <div className="grid-2">
+                        <label style={{ width: '100%' }}>
+                          <span className="mini-label">Start</span>
+                          <input className="form-input" type="month" value={pr.start || ''} onChange={(e)=>updateItem('projects', i, { start: e.target.value })} />
+                        </label>
+                        <label style={{ width: '100%' }}>
+                          <span className="mini-label">End</span>
+                          <input className="form-input" type="month" value={pr.end || ''} onFocus={()=>{ if(!pr.end && !pr.current){ updateItem('projects', i, { end: currentMonth() }); } }} onChange={(e)=>updateItem('projects', i, { end: e.target.value, current: false })} disabled={pr.current} />
+                        </label>
+                      </div>
+                      {(() => { const v = validateDateRange(pr.start, pr.end, pr.current); return !v.valid ? (<div className="field-error">{v.message}</div>) : null; })()}
+                      <label className="inline-check">
+                        <input type="checkbox" checked={!!pr.current} onChange={(e)=>updateItem('projects', i, { current: e.target.checked, end: e.target.checked ? '' : (pr.end || currentMonth()) })} />
+                        <span>Currently working</span>
+                      </label>
+                      <textarea className="form-input" placeholder="Short description of the project" rows={3} value={pr.description} onChange={(e)=>updateItem('projects', i, { description: e.target.value })} />
+                      <input className="form-input" placeholder="Tech (comma separated) e.g., React, Node, PostgreSQL" value={(pr.tech || []).join(', ')} onChange={(e)=>updateItem('projects', i, { tech: e.target.value.split(',').map(s=>s.trim()).filter(Boolean) })} />
+                      <input className="form-input" placeholder="Link (GitHub/Live)" value={pr.link} onChange={(e)=>updateItem('projects', i, { link: e.target.value })} />
+                      <div className="row-actions" style={{ gap: 8 }}>
+                        <button className="btn btn-primary" disabled={!validateDateRange(pr.start, pr.end, pr.current).valid || savingEntryKey===`projects-${i}`} onClick={()=>saveEntry('projects', i)}>
+                          {savingEntryKey===`projects-${i}` ? 'Saving...' : (savedEntryKey===`projects-${i}` ? 'Saved' : 'Save')}
+                        </button>
+                        <button className="btn btn-secondary" onClick={()=>removeItem('projects', i)}>Remove</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {profileTab === 'skills' && (
+            <section className="li-card">
+              <div className="li-card-header">
+                <h3 className="li-title">Skills</h3>
+              </div>
+              <div className="skills-only">
+                <div className="skills-graph">
+                  {(portfolio.skills || []).map((skill, i) => (
+                    <span key={skill+String(i)} className="skill-chip deletable" title="Remove skill">
+                      {skill}
+                      <button className="remove-x" onClick={() => removeSkill(skill)} aria-label={`Remove ${skill}`}>×</button>
+                    </span>
+                  ))}
+                </div>
+                <div style={{ marginTop: 12 }}>
+                  <input id="newSkill" className="form-input" placeholder="Add a skill and press Enter (e.g., Java, Python)" onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); addSkill(e.currentTarget.value); e.currentTarget.value = ''; }
+                  }} />
+                </div>
+              </div>
+            </section>
+          )}
         </main>
       </div>
     </div>
@@ -699,10 +1084,60 @@ const StudentDashboard = () => {
             </div>
           </div>
           <div className="header-actions">
-            <button onClick={() => setIsDark(v => !v)} className="btn btn-secondary" title="Toggle dark mode">🌓</button>
-            <button onClick={() => { localStorage.clear(); navigate('/login'); }} className="btn btn-secondary" title="Logout">
-              🚪
-            </button>
+            <div className="header-icons">
+              <div className="dropdown">
+                <button className="icon-btn" title="Notifications" onClick={()=>{ setShowNotif(v=>!v); setShowMsgs(false); }}>
+                  🔔 {notificationItems.filter(n=>!n.read).length > 0 && <span className="badge-count">{notificationItems.filter(n=>!n.read).length}</span>}
+                </button>
+                {showNotif && (
+                  <div className="dropdown-menu">
+                    {notificationItems.length === 0 ? (
+                      <div className="dropdown-empty">No notifications</div>
+                    ) : notificationItems.map(n => (
+                      <div key={n.id} className={`dropdown-item ${n.read ? '' : 'unread'}`} onClick={()=>{
+                        setNotificationItems(prev=>{ const next=prev.map(x=>x.id===n.id?{...x, read:true}:x); localStorage.setItem('tt_notifications', JSON.stringify(next)); return next; });
+                      }}>
+                        <div className="item-text">{n.text}</div>
+                        <div className="item-time">{new Date(n.at).toLocaleString()}</div>
+                      </div>
+                    ))}
+                    {notificationItems.length>0 && (
+                      <div className="dropdown-actions">
+                        <button className="btn btn-secondary" onClick={()=>{ setNotificationItems(prev=>{ const next=prev.map(x=>({...x, read:true})); localStorage.setItem('tt_notifications', JSON.stringify(next)); return next; }); }}>Mark all read</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="dropdown">
+                <button className="icon-btn" title="Messages" onClick={()=>{ setShowMsgs(v=>!v); setShowNotif(false); }}>
+                  ✉️ {messageItems.filter(m=>!m.read).length > 0 && <span className="badge-count">{messageItems.filter(m=>!m.read).length}</span>}
+                </button>
+                {showMsgs && (
+                  <div className="dropdown-menu">
+                    {messageItems.length === 0 ? (
+                      <div className="dropdown-empty">No messages</div>
+                    ) : messageItems.map(m => (
+                      <div key={m.id} className={`dropdown-item ${m.read ? '' : 'unread'}`} onClick={()=>{
+                        setMessageItems(prev=>{ const next=prev.map(x=>x.id===m.id?{...x, read:true}:x); localStorage.setItem('tt_messages', JSON.stringify(next)); return next; });
+                      }}>
+                        <div className="item-text"><strong>{m.from}:</strong> {m.preview}</div>
+                        <div className="item-time">{new Date(m.at).toLocaleString()}</div>
+                      </div>
+                    ))}
+                    {messageItems.length>0 && (
+                      <div className="dropdown-actions">
+                        <button className="btn btn-secondary" onClick={()=>{ setMessageItems(prev=>{ const next=prev.map(x=>({...x, read:true})); localStorage.setItem('tt_messages', JSON.stringify(next)); return next; }); }}>Mark all read</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <button onClick={() => setIsDark(v => !v)} className="icon-btn" title="Toggle dark mode">🌓</button>
+              <button onClick={() => { localStorage.clear(); navigate('/login'); }} className="icon-btn" title="Logout">
+                🚪
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -712,25 +1147,36 @@ const StudentDashboard = () => {
           className={`tab-button ${activeTab === 'opportunities' ? 'active' : ''}`}
           onClick={() => setActiveTab('opportunities')}
         >
+          <span className="tab-icon">💼</span>
           <span className="tab-text">Opportunities</span>
         </button>
         <button 
           className={`tab-button ${activeTab === 'portfolio' ? 'active' : ''}`}
           onClick={() => setActiveTab('portfolio')}
         >
+          <span className="tab-icon">👤</span>
           <span className="tab-text">Profile</span>
         </button>
         <button 
           className={`tab-button ${activeTab === 'mentors' ? 'active' : ''}`}
           onClick={() => setActiveTab('mentors')}
         >
+          <span className="tab-icon">🧠</span>
           <span className="tab-text">Mentors</span>
         </button>
         <button 
           className={`tab-button ${activeTab === 'credentials' ? 'active' : ''}`}
           onClick={() => setActiveTab('credentials')}
         >
+          <span className="tab-icon">🏆</span>
           <span className="tab-text">Credentials</span>
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'activity' ? 'active' : ''}`}
+          onClick={() => setActiveTab('activity')}
+        >
+          <span className="tab-icon">📊</span>
+          <span className="tab-text">Activity</span>
         </button>
         <span className="tab-underline" aria-hidden />
       </div>
@@ -740,6 +1186,7 @@ const StudentDashboard = () => {
         {activeTab === 'portfolio' && renderPortfolioTab()}
         {activeTab === 'mentors' && renderMentorsTab()}
         {activeTab === 'credentials' && renderCredentialsTab()}
+        {activeTab === 'activity' && renderActivityTab()}
       </div>
     </div>
   );
