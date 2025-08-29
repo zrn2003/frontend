@@ -391,6 +391,25 @@
 }
 
 /* Responsive Design */
+@media (max-width: 1024px) {
+  .nav-container {
+    padding: 0 16px;
+  }
+  
+  .nav-menu-desktop {
+    gap: 1.5rem;
+  }
+  
+  .nav-link {
+    font-size: 0.85rem;
+    padding: 6px 10px;
+  }
+  
+  .user-menu-toggle {
+    min-width: 180px;
+  }
+}
+
 @media (max-width: 768px) {
   .nav-menu-desktop {
     display: none;
@@ -426,6 +445,125 @@
   
   .dropdown-arrow {
     display: none;
+  }
+  
+  .nav-container {
+    padding: 0 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .nav-container {
+    padding: 0 8px;
+  }
+  
+  .brand-text {
+    font-size: 1.125rem;
+  }
+  
+  .brand-icon {
+    font-size: 1.25rem;
+  }
+  
+  .user-menu-toggle {
+    padding: 4px 6px;
+  }
+  
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.75rem;
+  }
+  
+  .nav-menu-mobile {
+    padding: 16px;
+    gap: 12px;
+  }
+  
+  .nav-menu-mobile .nav-link {
+    padding: 10px;
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-container {
+    height: 56px;
+  }
+  
+  .brand-text {
+    font-size: 1rem;
+  }
+  
+  .brand-icon {
+    font-size: 1.125rem;
+    margin-right: 6px;
+  }
+  
+  .user-menu-toggle {
+    padding: 3px 4px;
+  }
+  
+  .user-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 0.625rem;
+  }
+  
+  .nav-menu-mobile {
+    top: 56px;
+    padding: 12px;
+    gap: 8px;
+  }
+  
+  .nav-menu-mobile .nav-link {
+    padding: 8px;
+    font-size: 0.8rem;
+  }
+  
+  .mobile-user-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 0.875rem;
+  }
+  
+  .mobile-user-name {
+    font-size: 0.8rem;
+  }
+  
+  .mobile-user-role {
+    font-size: 0.625rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .nav-container {
+    height: 52px;
+  }
+  
+  .brand-text {
+    font-size: 0.875rem;
+  }
+  
+  .brand-icon {
+    font-size: 1rem;
+    margin-right: 4px;
+  }
+  
+  .user-avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 0.5rem;
+  }
+  
+  .nav-menu-mobile {
+    top: 52px;
+    padding: 8px;
+  }
+  
+  .nav-menu-mobile .nav-link {
+    padding: 6px;
+    font-size: 0.75rem;
   }
 }
 
