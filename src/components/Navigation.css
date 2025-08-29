@@ -323,6 +323,8 @@
   border-bottom: 1px solid rgba(37, 99, 235, 0.1);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   z-index: 999;
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
 }
 
 .nav-menu-mobile.active {
@@ -428,6 +430,8 @@
     text-align: center;
     padding: 12px;
     border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
   }
   
   .nav-menu-mobile .nav-link:hover {
@@ -449,6 +453,14 @@
   
   .nav-container {
     padding: 0 12px;
+  }
+  
+  .mobile-auth {
+    margin-top: 20px;
+  }
+  
+  .mobile-user-info {
+    margin-top: 20px;
   }
 }
 
