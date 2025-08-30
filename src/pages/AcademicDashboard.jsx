@@ -1,31 +1,47 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../config/api.js'
 import './AcademicDashboard.css'
 
 export default function AcademicDashboard() {
-  const [activeSection, setActiveSection] = useState('dashboard')
+  const [activeTab, setActiveTab] = useState('profile')
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
-  const [showProfile, setShowProfile] = useState(false)
-  const profileRef = useRef(null)
-  const [inst, setInst] = useState(null)
-  const [editingInst, setEditingInst] = useState(false)
+  const [userProfile, setUserProfile] = useState(null)
+  const [isEditingProfile, setIsEditingProfile] = useState(false)
+  const [editedProfile, setEditedProfile] = useState({})
+  
+  // Opportunities state
+  const [opportunities, setOpportunities] = useState([])
+  const [showOpportunityForm, setShowOpportunityForm] = useState(false)
+  const [opportunityForm, setOpportunityForm] = useState({
+    title: '',
+    description: '',
+    type: 'research_paper',
+    requirements: '',
+    deadline: '',
+    stipend: '',
+    location: '',
+    duration: '',
+    contact_email: '',
+    contact_phone: ''
+  })
 
-  // UI state
-  const [query, setQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [sortBy, setSortBy] = useState('created_at_desc')
-  const [page, setPage] = useState(1)
-  const pageSize = 10
+  // Applications state
+  const [applications, setApplications] = useState([])
+  const [selectedOpportunity, setSelectedOpportunity] = useState(null)
+  const [showApplicationModal, setShowApplicationModal] = useState(false)
+  const [selectedApplication, setSelectedApplication] = useState(null)
+  const [applicationStatus, setApplicationStatus] = useState('pending')
+  const [reviewNotes, setReviewNotes] = useState('')
 
+  // Fetch students from the academic leader's university
   const fetchStudents = async () => {
     try {
       setLoading(true)
       setError('')
       const data = await api.getAcademicStudents()
-      // Add UI-only status fallback
       const withStatus = (data.students || []).map(s => ({ ...s, status: s.status || 'active' }))
       setStudents(withStatus)
     } catch (e) {
@@ -35,505 +51,1344 @@ export default function AcademicDashboard() {
     }
   }
 
+  // Fetch academic leader's own profile
+  const fetchUserProfile = async () => {
+    try {
+      const userData = JSON.parse(localStorage.getItem('userData'))
+      if (userData && userData.id) {
+        const profileData = await api.getUserProfile(userData.id)
+        setUserProfile(profileData)
+        setEditedProfile(profileData)
+      }
+    } catch (e) {
+      console.error('Failed to fetch user profile:', e)
+    }
+  }
+
+  // Save profile changes
+  const handleProfileSave = async () => {
+    try {
+      const userData = JSON.parse(localStorage.getItem('userData'))
+      if (userData && userData.id) {
+        await api.updateUserProfile(userData.id, editedProfile)
+        setUserProfile(editedProfile)
+        setIsEditingProfile(false)
+        alert('Profile updated successfully!')
+      }
+    } catch (e) {
+      alert('Failed to update profile: ' + e.message)
+    }
+  }
+
+  // Handle profile field changes
+  const handleProfileFieldChange = (field, value) => {
+    setEditedProfile(prev => ({ ...prev, [field]: value }))
+  }
+
+  // Delete student
   const deleteStudent = async (id) => {
-    if (!window.confirm('Delete this student?')) return
+    if (!window.confirm('Are you sure you want to delete this student?')) return
     try {
       await api.deleteAcademicStudent(id)
       await fetchStudents()
-      alert('Student deleted')
+      alert('Student deleted successfully')
     } catch (e) {
       alert(e.message || 'Delete failed')
     }
   }
 
-  useEffect(() => { fetchStudents() }, [])
-  useEffect(() => {
-    const onDoc = (e) => { if (profileRef.current && !profileRef.current.contains(e.target)) setShowProfile(false) }
-    document.addEventListener('click', onDoc)
-    return () => document.removeEventListener('click', onDoc)
-  }, [])
-
-  // Load institute profile (localStorage fallback; replace with API when available)
-  useEffect(() => {
-    const saved = localStorage.getItem('tt_institute_profile')
-    if (saved) {
-      setInst(JSON.parse(saved))
-    } else {
-      setInst({
-        name: 'Prestige University',
-        tagline: 'Excellence in education since 1985',
-        address: '123 Education Street, Academic City',
-        website: 'https://www.prestige.edu',
-        contact: '+91 98765 43210',
-        established: '1985',
-        affiliation: 'National Education Board',
-        leadership: [
-          { id: 'l1', name: 'Dr. Kavita Rao', role: 'Director' },
-          { id: 'l2', name: 'Prof. Arjun Mehta', role: 'Principal' }
-        ],
-        programs: [
-          { id: 'p1', title: 'Computer Science', degree: "Bachelor's", students: 120 },
-          { id: 'p2', title: 'Electronics', degree: "Bachelor's", students: 98 },
-          { id: 'p3', title: 'MBA', degree: "Master's", students: 85 }
-        ],
-        partners: ['TechCorp','DataWorks','GlobalEdu'],
-        achievements: [ { id:'a1', year: '2024', title: 'Top 50 National Ranking' } ],
-        announcements: [ { id:'n1', date: '2025-08-20', content: 'New course registrations open' } ]
-      })
+  // Fetch opportunities posted by academic leader
+  const fetchOpportunities = async () => {
+    try {
+      const userData = JSON.parse(localStorage.getItem('userData'))
+      if (userData && userData.id) {
+        const data = await api.getAcademicOpportunities(userData.id)
+        setOpportunities(data.opportunities || [])
+      }
+    } catch (e) {
+      console.error('Failed to fetch opportunities:', e)
     }
-  }, [])
-
-  const saveInstitute = () => {
-    localStorage.setItem('tt_institute_profile', JSON.stringify(inst))
-    setEditingInst(false)
   }
 
-  const filtered = useMemo(() => {
-    let list = students
-    if (query) {
-      const q = query.toLowerCase()
-      list = list.filter(s => (s.name || '').toLowerCase().includes(q) || (s.email || '').toLowerCase().includes(q))
-    }
-    if (statusFilter) list = list.filter(s => (s.status || 'active') === statusFilter)
-
-    const sorted = [...list]
-    sorted.sort((a,b) => {
-      switch (sortBy) {
-        case 'name_asc': return (a.name||'').localeCompare(b.name||'')
-        case 'name_desc': return (b.name||'').localeCompare(a.name||'')
-        case 'created_at_asc': return new Date(a.created_at) - new Date(b.created_at)
-        case 'created_at_desc': default: return new Date(b.created_at) - new Date(a.created_at)
+  // Post new opportunity
+  const handlePostOpportunity = async () => {
+    try {
+      const userData = JSON.parse(localStorage.getItem('userData'))
+      if (userData && userData.id) {
+        await api.postOpportunity({
+          ...opportunityForm,
+          academic_leader_id: userData.id,
+          university_id: userData.university_id
+        })
+        
+        // Reset form and close modal
+        setOpportunityForm({
+          title: '',
+          description: '',
+          type: 'research_paper',
+          requirements: '',
+          deadline: '',
+          stipend: '',
+          location: '',
+          duration: '',
+          contact_email: '',
+          contact_phone: ''
+        })
+        setShowOpportunityForm(false)
+        
+        // Refresh opportunities list
+        await fetchOpportunities()
+        alert('Opportunity posted successfully!')
       }
+    } catch (e) {
+      alert('Failed to post opportunity: ' + e.message)
+    }
+  }
+
+  // Delete opportunity
+  const deleteOpportunity = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this opportunity?')) return
+    try {
+      await api.deleteOpportunity(id)
+      await fetchOpportunities()
+      alert('Opportunity deleted successfully')
+    } catch (e) {
+      alert(e.message || 'Delete failed')
+    }
+  }
+
+  // Handle opportunity form field changes
+  const handleOpportunityFieldChange = (field, value) => {
+    setOpportunityForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  // Get opportunity icon based on type
+  const getOpportunityIcon = (type) => {
+    switch (type) {
+      case 'research_paper':
+        return 'fa-microscope'
+      case 'project':
+        return 'fa-project-diagram'
+      case 'internship':
+        return 'fa-graduation-cap'
+      case 'job':
+        return 'fa-briefcase'
+      default:
+        return 'fa-briefcase'
+    }
+  }
+
+  // Edit opportunity
+  const handleEditOpportunity = (opportunity) => {
+    setOpportunityForm({
+      ...opportunity,
+      deadline: opportunity.deadline || opportunity.closingDate || ''
     })
-    return sorted
-  }, [students, query, statusFilter, sortBy])
+    setShowOpportunityForm(true)
+  }
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
-  const pageItems = filtered.slice((page-1)*pageSize, page*pageSize)
-
-  const stats = useMemo(() => ({
-    total: filtered.length,
-    active: filtered.filter(s => s.status === 'active').length,
-    completed: filtered.filter(s => s.status === 'completed').length,
-    faculty: 42,
-    courses: 28,
-    reports: 5
-  }), [filtered])
-
-  // Simple counter animation
-  const useCounter = (target) => {
-    const [val, setVal] = useState(0)
-    useEffect(() => {
-      let raf
-      const start = performance.now()
-      const duration = 800
-      const from = 0
-      const step = (t) => {
-        const p = Math.min(1, (t - start) / duration)
-        const eased = 1 - Math.pow(1 - p, 3)
-        setVal(Math.round(from + (target - from) * eased))
-        if (p < 1) raf = requestAnimationFrame(step)
+  // Update opportunity
+  const handleUpdateOpportunity = async () => {
+    try {
+      const userData = JSON.parse(localStorage.getItem('userData'))
+      if (userData && userData.id) {
+        await api.updateOpportunity(opportunityForm.id, {
+          ...opportunityForm,
+          academic_leader_id: userData.id,
+          university_id: userData.university_id
+        })
+        
+        // Reset form and close modal
+        setOpportunityForm({
+          title: '',
+          description: '',
+          type: 'research_paper',
+          requirements: '',
+          deadline: '',
+          stipend: '',
+          location: '',
+          duration: '',
+          contact_email: '',
+          contact_phone: ''
+        })
+        setShowOpportunityForm(false)
+        
+        // Refresh opportunities list
+        await fetchOpportunities()
+        alert('Opportunity updated successfully!')
       }
-      raf = requestAnimationFrame(step)
-      return () => cancelAnimationFrame(raf)
-    }, [target])
-    return val
+    } catch (e) {
+      alert('Failed to update opportunity: ' + e.message)
+    }
   }
 
-  const cTotal = useCounter(stats.total)
-  const cFaculty = useCounter(stats.faculty)
-  const cCourses = useCounter(stats.courses)
-  const cReports = useCounter(stats.reports)
-
-  // Demo activity and announcements
-  const activities = [
-    { id: 'a1', icon: '🎓', text: 'Student Priya Sharma added to CSE', at: '2h ago' },
-    { id: 'a2', icon: '📄', text: 'Report generated: Q2 Performance', at: '5h ago' },
-    { id: 'a3', icon: '📚', text: 'Course syllabus updated: DS-201', at: '1d ago' },
-    { id: 'a4', icon: '🤝', text: 'Partnership signed with TechCorp', at: '2d ago' }
-  ]
-  const announcements = [
-    { id: 'n1', date: '2025-09-15', title: 'Annual Conference', desc: 'Register now for the annual conference.' },
-    { id: 'n2', date: '2025-08-20', title: 'New Courses', desc: 'Explore fall semester offerings.' },
-    { id: 'n3', date: '2025-08-10', title: 'Faculty Meeting', desc: 'All faculty meet Friday 4 PM.' }
-  ]
-  const [carouselIdx, setCarouselIdx] = useState(0)
   useEffect(() => {
-    const id = setInterval(() => setCarouselIdx(i => (i + 1) % announcements.length), 3000)
-    return () => clearInterval(id)
-  }, [announcements.length])
+    fetchStudents()
+    fetchUserProfile()
+    fetchOpportunities()
+  }, [])
 
-  // Reports demo datasets
-  const perfBySemester = [68, 72, 75, 80, 78, 84]
-  const facultyWorkload = [12, 10, 16, 14, 9, 11]
-  const partnershipImpact = [20, 28, 32, 40, 44, 53]
-
-  const exportCSV = (rows, filename) => {
-    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url)
+  // Fetch applications for an opportunity
+  const fetchApplications = async (opportunityId) => {
+    try {
+      const data = await api.getApplicationsForOpportunity(opportunityId)
+      setApplications(data.applications || [])
+      setSelectedOpportunity(data.opportunity)
+    } catch (e) {
+      console.error('Failed to fetch applications:', e)
+      alert('Failed to fetch applications: ' + e.message)
+    }
   }
 
-  const avatarOf = (name, email) => {
-    const token = (name || email || 'U').trim()
-    return token.charAt(0).toUpperCase()
+  // Handle application status update
+  const handleUpdateApplicationStatus = async () => {
+    try {
+      if (!selectedApplication) return
+      
+      await api.updateApplicationStatus(selectedApplication.id, {
+        status: applicationStatus,
+        reviewNotes: reviewNotes
+      })
+      
+      // Refresh applications
+      await fetchApplications(selectedOpportunity.id)
+      
+      // Reset form
+      setSelectedApplication(null)
+      setApplicationStatus('pending')
+      setReviewNotes('')
+      setShowApplicationModal(false)
+      
+      alert('Application status updated successfully!')
+    } catch (e) {
+      alert('Failed to update application status: ' + e.message)
+    }
+  }
+
+  // View application details
+  const handleViewApplication = (application) => {
+    setSelectedApplication(application)
+    setApplicationStatus(application.status)
+    setReviewNotes(application.review_notes || '')
+    setShowApplicationModal(true)
+  }
+
+  // Filter students based on search
+  const filteredStudents = students.filter(student =>
+    student.name?.toLowerCase().includes(search.toLowerCase()) ||
+    student.email?.toLowerCase().includes(search.toLowerCase())
+  )
+
+  // Avatar helper function
+  const getAvatar = (name) => {
+    if (!name) return '?'
+    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase()
+    return initials.slice(0, 2)
   }
 
   return (
     <div className="academic-dashboard">
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <h2 className="logo">🎓 Institute</h2>
-        <nav>
-          <button className={`nav-btn ${activeSection==='dashboard' ? 'active' : ''}`} onClick={()=>setActiveSection('dashboard')}>🏠 Dashboard</button>
-          <button className={`nav-btn ${activeSection==='students' ? 'active' : ''}`} onClick={()=>setActiveSection('students')}>🎓 Students</button>
-          <button className={`nav-btn ${activeSection==='faculty' ? 'active' : ''}`} onClick={()=>setActiveSection('faculty')}>👨‍🏫 Faculty</button>
-          <button className={`nav-btn ${activeSection==='courses' ? 'active' : ''}`} onClick={()=>setActiveSection('courses')}>📚 Courses</button>
-          <button className={`nav-btn ${activeSection==='partnerships' ? 'active' : ''}`} onClick={()=>setActiveSection('partnerships')}>🤝 Partnerships</button>
-          <button className={`nav-btn ${activeSection==='reports' ? 'active' : ''}`} onClick={()=>setActiveSection('reports')}>📊 Reports</button>
-          <button className={`nav-btn ${activeSection==='institute' ? 'active' : ''}`} onClick={()=>setActiveSection('institute')}>🏫 Institute Profile</button>
-          <button className={`nav-btn ${activeSection==='settings' ? 'active' : ''}`} onClick={()=>setActiveSection('settings')}>⚙️ Settings</button>
-        </nav>
-      </aside>
+      {/* Header */}
+      <header className="dashboard-header">
+        <div className="header-content">
+          <div className="header-left">
+            <h1>🎓 Academic Leader Dashboard</h1>
+            <p>Manage your profile and university students</p>
+          </div>
+          <div className="header-right">
+            <button 
+              className="logout-btn"
+              onClick={() => {
+                localStorage.clear()
+                window.location.href = '/'
+              }}
+            >
+              <i className="fas fa-sign-out-alt"></i>
+              Logout
+            </button>
+          </div>
+        </div>
+      </header>
 
-      {/* Main Content */}
-      <main className="content">
-        <header className="dashboard-header">
-          <div className="header-row">
-            <div className="brand-left">
-              <span className="brand-logo">🏫</span>
-              <h1>Academic Leader Dashboard</h1>
+      <div className="dashboard-container">
+        {/* Left Sidebar Navigation */}
+        <aside className="sidebar">
+          <div className="sidebar-header">
+            <div className="user-info">
+              <div className="user-avatar">
+                {userProfile ? getAvatar(userProfile.name) : 'AL'}
+              </div>
+              <div className="user-details">
+                <h3>{userProfile?.name || 'Academic Leader'}</h3>
+                <p>{userProfile?.email || 'Loading...'}</p>
+                <span className="user-role">Academic Leader</span>
+              </div>
             </div>
-            <div className="brand-center">
-              <input className="search-input" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search students / courses / faculty" />
-            </div>
-            <div className="brand-right" ref={profileRef}>
-              <button className="profile-btn" onClick={(e)=>{ e.stopPropagation(); setShowProfile(v=>!v) }}>
-                <span className="profile-avatar">AL</span>
-                <span>▾</span>
-              </button>
-              {showProfile && (
-                <div className="profile-menu">
-                  <button>Profile</button>
-                  <button>Settings</button>
-                  <button onClick={()=>{ localStorage.clear(); window.location.href='/' }}>Logout</button>
+          </div>
+
+          <nav className="sidebar-nav">
+            <button 
+              className={`sidebar-nav-item ${activeTab === 'profile' ? 'active' : ''}`}
+              onClick={() => setActiveTab('profile')}
+              title="View and edit your academic profile"
+            >
+              <i className="fas fa-user"></i>
+              <span>My Profile</span>
+            </button>
+            
+            <button 
+              className={`sidebar-nav-item ${activeTab === 'students' ? 'active' : ''}`}
+              onClick={() => setActiveTab('students')}
+              title="Manage university students"
+            >
+              <i className="fas fa-users"></i>
+              <span>University Students</span>
+              <span className="nav-badge">{students.length}</span>
+            </button>
+
+            <button 
+              className={`sidebar-nav-item ${activeTab === 'opportunities' ? 'active' : ''}`}
+              onClick={() => setActiveTab('opportunities')}
+              title="Post and manage opportunities for students"
+            >
+              <i className="fas fa-briefcase"></i>
+              <span>Opportunities</span>
+              <span className="nav-badge">{opportunities.length}</span>
+            </button>
+
+            <button 
+              className={`sidebar-nav-item ${activeTab === 'applications' ? 'active' : ''}`}
+              onClick={() => setActiveTab('applications')}
+              title="View and manage student applications"
+            >
+              <i className="fas fa-file-alt"></i>
+              <span>Applications</span>
+              <span className="nav-badge">{applications.length}</span>
+            </button>
+
+            <div className="sidebar-divider"></div>
+
+            <button 
+              className="sidebar-nav-item"
+              onClick={() => {
+                localStorage.clear()
+                window.location.href = '/'
+              }}
+              title="Sign out of your account"
+            >
+              <i className="fas fa-sign-out-alt"></i>
+              <span>Logout</span>
+            </button>
+          </nav>
+        </aside>
+
+        {/* Main Content Area */}
+        <main className="main-content">
+        {/* Profile Tab */}
+        {activeTab === 'profile' && (
+          <div className="profile-section">
+            <div className="section-header">
+              <h2>My Profile</h2>
+              {!isEditingProfile ? (
+                <button 
+                  className="edit-btn"
+                  onClick={() => setIsEditingProfile(true)}
+                >
+                  <i className="fas fa-edit"></i>
+                  Edit Profile
+                </button>
+              ) : (
+                <div className="edit-actions">
+                  <button 
+                    className="save-btn"
+                    onClick={handleProfileSave}
+                  >
+                    <i className="fas fa-save"></i>
+                    Save
+                  </button>
+                  <button 
+                    className="cancel-btn"
+                    onClick={() => {
+                      setIsEditingProfile(false)
+                      setEditedProfile(userProfile)
+                    }}
+                  >
+                    <i className="fas fa-times"></i>
+                    Cancel
+                  </button>
                 </div>
               )}
             </div>
-          </div>
-        </header>
 
-        {activeSection === 'dashboard' && (
-          <>
-            <div className="kpi-grid">
-              <div className="kpi-card"><div className="kpi-icon">🎓</div><div className="kpi-content"><h2>{cTotal}</h2><p>Total Students</p></div></div>
-              <div className="kpi-card"><div className="kpi-icon">👨‍🏫</div><div className="kpi-content"><h2>{cFaculty}</h2><p>Total Faculty</p></div></div>
-              <div className="kpi-card"><div className="kpi-icon">📚</div><div className="kpi-content"><h2>{cCourses}</h2><p>Active Courses</p></div></div>
-              <div className="kpi-card"><div className="kpi-icon">📊</div><div className="kpi-content"><h2>{cReports}</h2><p>Pending Reports</p></div></div>
-            </div>
-
-            <div className="dashboard-grid">
-              <section className="dashboard-card">
-                <h3>Recent Activities</h3>
-                <div className="activities-list">
-                  {activities.map(a => (
-                    <div key={a.id} className="activity-item">
-                      <div className="activity-icon">{a.icon}</div>
-                      <div className="activity-content">
-                        <h4>{a.text}</h4>
-                        <span className="activity-time">{a.at}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-              <section className="dashboard-card">
-                <h3>Announcements</h3>
-                <div className="announcements-carousel">
-                  <div className="carousel-window">
-                    <div className="carousel-track" style={{ transform: `translateY(-${carouselIdx * 100}%)` }}>
-                      {announcements.map(n => (
-                        <div key={n.id} className="announcement-item">
-                          <h4>{n.title}</h4>
-                          <span className="announcement-date">{new Date(n.date).toLocaleDateString()}</span>
-                          <p>{n.desc}</p>
-                        </div>
-                      ))}
-                    </div>
+            {userProfile ? (
+              <div className="profile-card">
+                <div className="profile-header">
+                  <div className="profile-avatar">
+                    {getAvatar(userProfile.name)}
+                  </div>
+                  <div className="profile-info">
+                    <h3>{userProfile.name}</h3>
+                    <p className="profile-role">Academic Leader</p>
+                    <p className="profile-email">{userProfile.email}</p>
                   </div>
                 </div>
-              </section>
-            </div>
 
-            <section className="dashboard-card">
-              <h3>Initiatives & Outcomes</h3>
-              <table className="initiatives-table">
-                <thead>
-                  <tr><th>Initiative</th><th>Outcome</th><th>Priority</th><th>Action</th></tr>
-                </thead>
-                <tbody>
-                  {[
-                    { name: 'Match students to capstone projects', out: 'Improve employability', p: 'High' },
-                    { name: 'Automate IP/research agreements', out: 'Protect innovations', p: 'Medium' },
-                    { name: 'Real-time partnership analytics', out: 'Show collaboration impact', p: 'High' },
-                    { name: 'Global industry partnerships', out: 'Enhance reputation', p: 'Medium' },
-                    { name: 'Align curriculum with KPIs', out: 'Boost rankings', p: 'Low' }
-                  ].map((r,i)=> (
-                    <tr key={i}>
-                      <td>{r.name}</td>
-                      <td>{r.out}</td>
-                      <td><span className={`priority-badge ${r.p.toLowerCase()}`}>{r.p}</span></td>
-                      <td><button className="action-btn" onClick={()=>{}}>Estimate Story</button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-          </>
-        )}
-
-        {activeSection === 'reports' && (
-          <>
-            <div className="reports-actions">
-              <button className="btn btn-secondary" onClick={()=> window.print()}>Export PDF</button>
-              <button className="btn btn-secondary" onClick={()=> exportCSV([
-                ['Metric','Q1','Q2','Q3','Q4'],
-                ['Avg Performance',68,72,78,84],
-                ['Faculty Workload',12,10,14,11]
-              ], 'analytics.csv')}>Export CSV</button>
-            </div>
-            <div className="charts-grid">
-              <div className="chart-card">
-                <h3>Student Performance (Semesters)</h3>
-                <svg viewBox="0 0 320 140" className="line-chart">
-                  <polyline fill="none" stroke="#4f46e5" strokeWidth="3" points={perfBySemester.map((v,i)=> `${(i/(perfBySemester.length-1))*300+10},${130 - (v/100)*120}` ).join(' ')}>
-                  </polyline>
-                  {perfBySemester.map((v,i)=> (
-                    <circle key={i} cx={(i/(perfBySemester.length-1))*300+10} cy={130 - (v/100)*120} r="4" />
-                  ))}
-                </svg>
-              </div>
-              <div className="chart-card">
-                <h3>Faculty Workload (Weekly Hours)</h3>
-                <div className="bars">
-                  {facultyWorkload.map((v,i)=> (
-                    <div key={i} className="bar" style={{ height: `${v*6}px` }} title={`${v} hrs`} />
-                  ))}
-                </div>
-              </div>
-              <div className="chart-card">
-                <h3>Partnerships Impact (Projects)</h3>
-                <svg viewBox="0 0 320 140" className="area-chart">
-                  <polyline fill="#a5b4fc55" stroke="#6366f1" strokeWidth="2" points={partnershipImpact.map((v,i)=> `${(i/(partnershipImpact.length-1))*300+10},${130 - (v/60)*120}` ).join(' ')} />
-                </svg>
-              </div>
-            </div>
-          </>
-        )}
-
-        {activeSection === 'institute' && inst && (
-          <section className="institute-profile">
-            <div className="inst-cover">
-              <button className="edit-fab" title={editingInst ? 'Save' : 'Edit profile'} onClick={() => { editingInst ? saveInstitute() : setEditingInst(true) }}>{editingInst ? '💾' : '✏️'}</button>
-              <div className="inst-gradient" aria-hidden></div>
-              <div className="inst-hero">
-                <div className="inst-logo">🏫</div>
-                <div className="inst-hero-text">
-                  {editingInst ? (
-                    <>
-                      <input className="inst-input" value={inst.name} onChange={e=>setInst(prev=>({ ...prev, name: e.target.value }))} />
-                      <input className="inst-input" value={inst.tagline} onChange={e=>setInst(prev=>({ ...prev, tagline: e.target.value }))} />
-                    </>
-                  ) : (
-                    <>
-                      <h2>{inst.name}</h2>
-                      <p>{inst.tagline}</p>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="inst-content">
-              <div className="grid-2col">
-                <section className="card basic-info">
-                  <div className="card-head"><h3>Basic Information</h3></div>
-                  <div className="info-grid">
-                    <div><span className="label">Address</span>{editingInst ? (<input className="inst-input" value={inst.address} onChange={e=>setInst(prev=>({ ...prev, address: e.target.value }))} />) : (<span>{inst.address}</span>)}</div>
-                    <div><span className="label">Website</span>{editingInst ? (<input className="inst-input" value={inst.website} onChange={e=>setInst(prev=>({ ...prev, website: e.target.value }))} />) : (<a href={inst.website} target="_blank" rel="noreferrer">{inst.website}</a>)}</div>
-                    <div><span className="label">Contact</span>{editingInst ? (<input className="inst-input" value={inst.contact} onChange={e=>setInst(prev=>({ ...prev, contact: e.target.value }))} />) : (<span>{inst.contact}</span>)}</div>
-                    <div><span className="label">Established</span>{editingInst ? (<input className="inst-input" value={inst.established} onChange={e=>setInst(prev=>({ ...prev, established: e.target.value }))} />) : (<span>{inst.established}</span>)}</div>
-                    <div><span className="label">Affiliation</span>{editingInst ? (<input className="inst-input" value={inst.affiliation} onChange={e=>setInst(prev=>({ ...prev, affiliation: e.target.value }))} />) : (<span>{inst.affiliation}</span>)}</div>
-                  </div>
-                </section>
-                <section className="card leaders">
-                  <div className="card-head"><h3>Leadership & Staff</h3></div>
-                  <div className="leader-grid">
-                    {(inst.leadership || []).map((L,i)=> (
-                      <div key={L.id || i} className="leader-card">
-                        <div className="face front"><div className="avatar">{(L.name||'').split(' ').map(x=>x[0]).join('').slice(0,2) || 'AL'}</div><div className="meta">
-                          {editingInst ? (
-                            <>
-                              <input className="inst-input" value={L.name} onChange={e=>{ const arr=[...inst.leadership]; arr[i]={...L,name:e.target.value}; setInst(prev=>({...prev, leadership: arr})) }} />
-                              <input className="inst-input" value={L.role} onChange={e=>{ const arr=[...inst.leadership]; arr[i]={...L,role:e.target.value}; setInst(prev=>({...prev, leadership: arr})) }} />
-                              <button className="mini" onClick={()=>{ const arr=inst.leadership.filter((_,idx)=>idx!==i); setInst(prev=>({...prev, leadership: arr})) }}>Remove</button>
-                            </>
-                          ) : (
-                            <>
-                              <strong>{L.name}</strong><span>{L.role}</span>
-                            </>
-                          )}
-                        </div></div>
-                        <div className="face back">Reach via admin office</div>
-                      </div>
-                    ))}
-                    {editingInst && (
-                      <button className="btn btn-secondary" onClick={()=> setInst(prev=>({...prev, leadership:[...(prev.leadership||[]), { id: `l${Date.now()}`, name:'New Leader', role:'Role' }] })) }>+ Add</button>
-                    )}
-                  </div>
-                </section>
-              </div>
-
-              <section className="card programs">
-                <div className="card-head"><h3>Programs & Courses</h3></div>
-                <div className="prog-grid">
-                  {(inst.programs || []).map((c,i)=> (
-                    <div key={c.id || i} className="prog-card">
-                      {editingInst ? (
-                        <>
-                          <input className="inst-input" value={c.title} onChange={e=>{ const arr=[...inst.programs]; arr[i]={...c,title:e.target.value}; setInst(prev=>({...prev, programs: arr})) }} />
-                          <input className="inst-input" value={c.degree} onChange={e=>{ const arr=[...inst.programs]; arr[i]={...c,degree:e.target.value}; setInst(prev=>({...prev, programs: arr})) }} />
-                          <input className="inst-input" value={c.students} onChange={e=>{ const arr=[...inst.programs]; arr[i]={...c,students:e.target.value}; setInst(prev=>({...prev, programs: arr})) }} />
-                          <button className="mini" onClick={()=>{ const arr=inst.programs.filter((_,idx)=>idx!==i); setInst(prev=>({...prev, programs: arr})) }}>Remove</button>
-                        </>
+                <div className="profile-details">
+                  {/* Basic Information */}
+                  <div className="profile-section-group">
+                    <h4><i className="fas fa-info-circle"></i> Basic Information</h4>
+                    
+                    <div className="detail-row">
+                      <label>Full Name:</label>
+                      {isEditingProfile ? (
+                        <input
+                          type="text"
+                          value={editedProfile.name || ''}
+                          onChange={(e) => handleProfileFieldChange('name', e.target.value)}
+                          placeholder="Enter full name"
+                        />
                       ) : (
-                        <>
-                          <h4>{c.title}</h4><p>{c.degree}</p><span className="count">{c.students} Students</span>
-                        </>
+                        <span>{userProfile.name || 'Not specified'}</span>
                       )}
                     </div>
-                  ))}
-                  {editingInst && (
-                    <button className="btn btn-secondary" onClick={()=> setInst(prev=>({...prev, programs:[...(prev.programs||[]), { id:`p${Date.now()}`, title:'New Program', degree:"Bachelor's", students:0 }] })) }>+ Add Program</button>
-                  )}
-                </div>
-              </section>
 
-              <div className="grid-2col">
-                <section className="card partners">
-                  <div className="card-head"><h3>Partnerships</h3></div>
-                  <div className="logo-row">
-                    {(inst.partners || []).map(p => (<div key={p} className="partner-badge">{p}</div>))}
-                    {editingInst && (
-                      <button className="btn btn-secondary" onClick={()=>{ const name = prompt('Partner name'); if (name) setInst(prev=>({...prev, partners:[...(prev.partners||[]), name]})) }}>+ Add</button>
-                    )}
+                    <div className="detail-row">
+                      <label>Email:</label>
+                      <span>{userProfile.email}</span>
+                    </div>
+
+                    <div className="detail-row">
+                      <label>Phone:</label>
+                      {isEditingProfile ? (
+                        <input
+                          type="tel"
+                          value={editedProfile.phone || ''}
+                          onChange={(e) => handleProfileFieldChange('phone', e.target.value)}
+                          placeholder="Enter phone number"
+                        />
+                      ) : (
+                        <span>{userProfile.phone || 'Not specified'}</span>
+                      )}
+                    </div>
+
+                    <div className="detail-row">
+                      <label>Address:</label>
+                      {isEditingProfile ? (
+                        <textarea
+                          value={editedProfile.address || ''}
+                          onChange={(e) => handleProfileFieldChange('address', e.target.value)}
+                          placeholder="Enter address"
+                          rows="3"
+                        />
+                      ) : (
+                        <span>{userProfile.address || 'Not specified'}</span>
+                      )}
+                    </div>
                   </div>
-                </section>
-                <section className="card timeline">
-                  <div className="card-head"><h3>Achievements</h3></div>
-                  <div className="time-list">
-                    {(inst.achievements || []).map((e,i)=> (
-                      <div key={e.id || i} className="time-item"><span className="dot" /> <span className="t-title">{e.title}</span> <span className="t-time">{e.year}</span>{editingInst && (<button className="mini" onClick={()=>{ const arr=inst.achievements.filter((_,idx)=>idx!==i); setInst(prev=>({...prev, achievements: arr})) }}>Remove</button>)}</div>
-                    ))}
-                    {editingInst && (
-                      <button className="btn btn-secondary" onClick={()=> setInst(prev=>({...prev, achievements:[...(prev.achievements||[]), { id:`a${Date.now()}`, year: new Date().getFullYear().toString(), title:'New Achievement' }] })) }>+ Add</button>
-                    )}
+
+                  {/* University & Position */}
+                  <div className="profile-section-group">
+                    <h4><i className="fas fa-university"></i> University & Position</h4>
+                    
+                    <div className="detail-row">
+                      <label>Associated University:</label>
+                      <span>{userProfile.university_name || 'Not specified'}</span>
+                    </div>
+
+                    <div className="detail-row">
+                      <label>Position:</label>
+                      {isEditingProfile ? (
+                        <input
+                          type="text"
+                          value={editedProfile.position || ''}
+                          onChange={(e) => handleProfileFieldChange('position', e.target.value)}
+                          placeholder="e.g., Professor, Associate Professor, Head of Department"
+                        />
+                      ) : (
+                        <span>{userProfile.position || 'Not specified'}</span>
+                      )}
+                    </div>
+
+                    <div className="detail-row">
+                      <label>Department:</label>
+                      {isEditingProfile ? (
+                        <input
+                          type="text"
+                          value={editedProfile.department || ''}
+                          onChange={(e) => handleProfileFieldChange('department', e.target.value)}
+                          placeholder="Enter department"
+                        />
+                      ) : (
+                        <span>{userProfile.department || 'Not specified'}</span>
+                      )}
+                    </div>
+
+                    <div className="detail-row">
+                      <label>Years of Experience:</label>
+                      {isEditingProfile ? (
+                        <input
+                          type="number"
+                          value={editedProfile.years_experience || ''}
+                          onChange={(e) => handleProfileFieldChange('years_experience', e.target.value)}
+                          placeholder="Enter years of experience"
+                          min="0"
+                        />
+                      ) : (
+                        <span>{userProfile.years_experience || 'Not specified'} years</span>
+                      )}
+                    </div>
                   </div>
-                </section>
+
+                  {/* Education */}
+                  <div className="profile-section-group">
+                    <h4><i className="fas fa-graduation-cap"></i> Education</h4>
+                    
+                    <div className="detail-row">
+                      <label>Highest Degree:</label>
+                      {isEditingProfile ? (
+                        <input
+                          type="text"
+                          value={editedProfile.highest_degree || ''}
+                          onChange={(e) => handleProfileFieldChange('highest_degree', e.target.value)}
+                          placeholder="e.g., Ph.D., M.Tech, M.Sc"
+                        />
+                      ) : (
+                        <span>{userProfile.highest_degree || 'Not specified'}</span>
+                      )}
+                    </div>
+
+                    <div className="detail-row">
+                      <label>Field of Study:</label>
+                      {isEditingProfile ? (
+                        <input
+                          type="text"
+                          value={editedProfile.field_of_study || ''}
+                          onChange={(e) => handleProfileFieldChange('field_of_study', e.target.value)}
+                          placeholder="e.g., Computer Science, Electronics"
+                        />
+                      ) : (
+                        <span>{userProfile.field_of_study || 'Not specified'}</span>
+                      )}
+                    </div>
+
+                    <div className="detail-row">
+                      <label>Institution:</label>
+                      {isEditingProfile ? (
+                        <input
+                          type="text"
+                          value={editedProfile.institution || ''}
+                          onChange={(e) => handleProfileFieldChange('institution', e.target.value)}
+                          placeholder="University/Institution name"
+                        />
+                      ) : (
+                        <span>{userProfile.institution || 'Not specified'}</span>
+                      )}
+                    </div>
+
+                    <div className="detail-row">
+                      <label>Year of Completion:</label>
+                      {isEditingProfile ? (
+                        <input
+                          type="number"
+                          value={editedProfile.completion_year || ''}
+                          onChange={(e) => handleProfileFieldChange('completion_year', e.target.value)}
+                          placeholder="Year"
+                          min="1950"
+                          max="2030"
+                        />
+                      ) : (
+                        <span>{userProfile.completion_year || 'Not specified'}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Research & Publications */}
+                  <div className="profile-section-group">
+                    <h4><i className="fas fa-microscope"></i> Research & Publications</h4>
+                    
+                    <div className="detail-row">
+                      <label>Research Papers Published:</label>
+                      {isEditingProfile ? (
+                        <input
+                          type="number"
+                          value={editedProfile.research_papers || ''}
+                          onChange={(e) => handleProfileFieldChange('research_papers', e.target.value)}
+                          placeholder="Number of research papers"
+                          min="0"
+                        />
+                      ) : (
+                        <span>{userProfile.research_papers || '0'} papers</span>
+                      )}
+                    </div>
+
+                    <div className="detail-row">
+                      <label>Research Areas:</label>
+                      {isEditingProfile ? (
+                        <textarea
+                          value={editedProfile.research_areas || ''}
+                          onChange={(e) => handleProfileFieldChange('research_areas', e.target.value)}
+                          placeholder="e.g., Machine Learning, Data Science, IoT"
+                          rows="3"
+                        />
+                      ) : (
+                        <span>{userProfile.research_areas || 'Not specified'}</span>
+                      )}
+                    </div>
+
+                    <div className="detail-row">
+                      <label>Publications:</label>
+                      {isEditingProfile ? (
+                        <textarea
+                          value={editedProfile.publications || ''}
+                          onChange={(e) => handleProfileFieldChange('publications', e.target.value)}
+                          placeholder="List your key publications"
+                          rows="4"
+                        />
+                      ) : (
+                        <span>{userProfile.publications || 'No publications listed'}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Projects */}
+                  <div className="profile-section-group">
+                    <h4><i className="fas fa-project-diagram"></i> Projects</h4>
+                    
+                    <div className="detail-row">
+                      <label>Projects Completed:</label>
+                      {isEditingProfile ? (
+                        <input
+                          type="number"
+                          value={editedProfile.projects_completed || ''}
+                          onChange={(e) => handleProfileFieldChange('projects_completed', e.target.value)}
+                          placeholder="Number of projects"
+                          min="0"
+                        />
+                      ) : (
+                        <span>{userProfile.projects_completed || '0'} projects</span>
+                      )}
+                    </div>
+
+                    <div className="detail-row">
+                      <label>Current Projects:</label>
+                      {isEditingProfile ? (
+                        <textarea
+                          value={editedProfile.current_projects || ''}
+                          onChange={(e) => handleProfileFieldChange('current_projects', e.target.value)}
+                          placeholder="Describe your current projects"
+                          rows="3"
+                        />
+                      ) : (
+                        <span>{userProfile.current_projects || 'No current projects'}</span>
+                      )}
+                    </div>
+
+                    <div className="detail-row">
+                      <label>Project Experience:</label>
+                      {isEditingProfile ? (
+                        <textarea
+                          value={editedProfile.project_experience || ''}
+                          onChange={(e) => handleProfileFieldChange('project_experience', e.target.value)}
+                          placeholder="Describe your project experience"
+                          rows="4"
+                        />
+                      ) : (
+                        <span>{userProfile.project_experience || 'No project experience listed'}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Additional Information */}
+                  <div className="profile-section-group">
+                    <h4><i className="fas fa-file-alt"></i> Additional Information</h4>
+                    
+                    <div className="detail-row">
+                      <label>Bio:</label>
+                      {isEditingProfile ? (
+                        <textarea
+                          value={editedProfile.bio || ''}
+                          onChange={(e) => handleProfileFieldChange('bio', e.target.value)}
+                          placeholder="Tell us about yourself"
+                          rows="4"
+                        />
+                      ) : (
+                        <span>{userProfile.bio || 'No bio available'}</span>
+                      )}
+                    </div>
+
+                    <div className="detail-row">
+                      <label>Status:</label>
+                      <span className={`status-badge ${userProfile.approval_status || 'pending'}`}>
+                        {userProfile.approval_status || 'Pending'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
-
-              <section className="card noticeboard">
-                <div className="card-head"><h3>Announcements</h3></div>
-                <div className="board">
-                  {(inst.announcements || []).map((n,i)=> (
-                    <div key={n.id || i} className="note"><span className="nd">{new Date(n.date).toLocaleDateString()}</span><span className="nc">{n.content}</span>{editingInst && (<button className="mini" onClick={()=>{ const arr=inst.announcements.filter((_,idx)=>idx!==i); setInst(prev=>({...prev, announcements: arr})) }}>Remove</button>)}</div>
-                  ))}
-                  {editingInst && (
-                    <button className="btn btn-secondary" onClick={()=> setInst(prev=>({...prev, announcements:[...(prev.announcements||[]), { id:`n${Date.now()}`, date: new Date().toISOString().slice(0,10), content:'New announcement' }] })) }>+ Add</button>
-                  )}
-                </div>
-              </section>
-            </div>
-          </section>
+            ) : (
+              <div className="loading-card">
+                <i className="fas fa-spinner fa-spin"></i>
+                <p>Loading profile...</p>
+              </div>
+            )}
+          </div>
         )}
 
-        {activeSection === 'students' && (<>
-        {/* Filters */}
-        <div className="filters-bar">
-          <input value={query} onChange={e=>{ setPage(1); setQuery(e.target.value) }} placeholder="Search name or email" />
-          <select value={statusFilter} onChange={e=>{ setPage(1); setStatusFilter(e.target.value) }}>
-            <option value="">All statuses</option>
-            <option value="active">Active</option>
-            <option value="completed">Completed</option>
-            <option value="inactive">Inactive</option>
-          </select>
-          <select value={sortBy} onChange={e=> setSortBy(e.target.value)}>
-            <option value="created_at_desc">Newest first</option>
-            <option value="created_at_asc">Oldest first</option>
-            <option value="name_asc">Name A–Z</option>
-            <option value="name_desc">Name Z–A</option>
-          </select>
-        </div>
-
-        {/* Student List */}
-        <section className="students-section">
-          <h3>Students in Your Institute</h3>
-          {loading ? (
-            <div className="loading">⏳ Loading students...</div>
-          ) : error ? (
-            <div className="error">
-              <p>{error}</p>
-              <button className="btn btn-primary" onClick={fetchStudents}>Retry</button>
-            </div>
-          ) : pageItems.length === 0 ? (
-            <p className="empty">No students found.</p>
-          ) : (
-            <>
-              <table className="students-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Joined</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pageItems.map(s => (
-                    <tr key={s.id} className="student-row">
-                      <td>
-                        <div className="student-meta">
-                          <div className="student-avatar">{avatarOf(s.name, s.email)}</div>
-                          <span>{s.name}</span>
-                        </div>
-                      </td>
-                      <td>{s.email}</td>
-                      <td>{new Date(s.created_at).toLocaleDateString()}</td>
-                      <td>
-                        <span className={`status ${s.status}`}>{s.status}</span>
-                      </td>
-                      <td>
-                        <div className="table-actions">
-                          <button className="btn btn-secondary" onClick={() => deleteStudent(s.id)}>Delete</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="pagination">
-                <button className="btn btn-secondary" disabled={page===1} onClick={()=> setPage(p=>p-1)}>Prev</button>
-                <span style={{ alignSelf:'center' }}>Page {page} of {totalPages}</span>
-                <button className="btn btn-secondary" disabled={page===totalPages} onClick={()=> setPage(p=>p+1)}>Next</button>
+        {/* Students Tab */}
+        {activeTab === 'students' && (
+          <div className="students-section">
+            <div className="section-header">
+              <h2>University Students</h2>
+              <div className="search-box">
+                <i className="fas fa-search"></i>
+                <input
+                  type="text"
+                  placeholder="Search students by name or email..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
               </div>
-            </>
-          )}
-        </section>
-        </>) }
-      </main>
+            </div>
+
+            {loading ? (
+              <div className="loading-card">
+                <i className="fas fa-spinner fa-spin"></i>
+                <p>Loading students...</p>
+              </div>
+            ) : error ? (
+              <div className="error-card">
+                <i className="fas fa-exclamation-triangle"></i>
+                <p>{error}</p>
+                <button className="retry-btn" onClick={fetchStudents}>
+                  <i className="fas fa-redo"></i>
+                  Retry
+                </button>
+              </div>
+            ) : filteredStudents.length === 0 ? (
+              <div className="empty-card">
+                <i className="fas fa-users"></i>
+                <p>{search ? 'No students found matching your search.' : 'No students found.'}</p>
+              </div>
+            ) : (
+              <div className="students-grid">
+                {filteredStudents.map(student => (
+                  <div key={student.id} className="student-card">
+                    <div className="student-header">
+                      <div className="student-avatar">
+                        {getAvatar(student.name)}
+                      </div>
+                      <div className="student-info">
+                        <h4>{student.name}</h4>
+                        <p>{student.email}</p>
+                        <span className={`status-badge ${student.status}`}>
+                          {student.status}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="student-details">
+                      <div className="detail-item">
+                        <span className="label">Joined:</span>
+                        <span>{new Date(student.created_at).toLocaleDateString()}</span>
+                      </div>
+                      {student.phone && (
+                        <div className="detail-item">
+                          <span className="label">Phone:</span>
+                          <span>{student.phone}</span>
+                        </div>
+                      )}
+                      {student.department && (
+                        <div className="detail-item">
+                          <span className="label">Department:</span>
+                          <span>{student.department}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="student-actions">
+                      <button 
+                        className="delete-btn"
+                        onClick={() => deleteStudent(student.id)}
+                        title="Delete student"
+                      >
+                        <i className="fas fa-trash"></i>
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Opportunities Tab */}
+        {activeTab === 'opportunities' && (
+          <div className="opportunities-section">
+            <div className="section-header">
+              <h2>Post Opportunities for Students</h2>
+              <button 
+                className="post-opportunity-btn"
+                onClick={() => setShowOpportunityForm(true)}
+              >
+                <i className="fas fa-plus"></i>
+                Post New Opportunity
+              </button>
+            </div>
+
+            {/* Opportunities List */}
+            <div className="opportunities-grid">
+              {opportunities.length === 0 ? (
+                <div className="empty-card">
+                  <i className="fas fa-briefcase"></i>
+                  <p>No opportunities posted yet. Start by posting your first opportunity!</p>
+                </div>
+              ) : (
+                opportunities.map(opportunity => (
+                  <div key={opportunity.id} className="opportunity-card">
+                    <div className="opportunity-header">
+                      <div className="opportunity-type-badge">
+                        <i className={`fas ${getOpportunityIcon(opportunity.type)}`}></i>
+                        {opportunity.type.replace('_', ' ').toUpperCase()}
+                      </div>
+                      <div className="opportunity-actions">
+                        <button 
+                          className="edit-opportunity-btn"
+                          onClick={() => handleEditOpportunity(opportunity)}
+                          title="Edit opportunity"
+                        >
+                          <i className="fas fa-edit"></i>
+                        </button>
+                        <button 
+                          className="delete-opportunity-btn"
+                          onClick={() => deleteOpportunity(opportunity.id)}
+                          title="Delete opportunity"
+                        >
+                          <i className="fas fa-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="opportunity-content">
+                      <h3>{opportunity.title}</h3>
+                      <p className="opportunity-description">{opportunity.description}</p>
+                      
+                      <div className="opportunity-details">
+                        {opportunity.requirements && (
+                          <div className="detail-item">
+                            <span className="label">Requirements:</span>
+                            <span>{opportunity.requirements}</span>
+                          </div>
+                        )}
+                        {opportunity.deadline && (
+                          <div className="detail-item">
+                            <span className="label">Deadline:</span>
+                            <span>{new Date(opportunity.deadline).toLocaleDateString()}</span>
+                          </div>
+                        )}
+                        {opportunity.stipend && (
+                          <div className="detail-item">
+                            <span className="label">Stipend:</span>
+                            <span>{opportunity.stipend}</span>
+                          </div>
+                        )}
+                        {opportunity.location && (
+                          <div className="detail-item">
+                            <span className="label">Location:</span>
+                            <span>{opportunity.location}</span>
+                          </div>
+                        )}
+                        {opportunity.duration && (
+                          <div className="detail-item">
+                            <span className="label">Duration:</span>
+                            <span>{opportunity.duration}</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="opportunity-contact">
+                        <p><strong>Contact:</strong> {opportunity.contact_email}</p>
+                        {opportunity.contact_phone && (
+                          <p><strong>Phone:</strong> {opportunity.contact_phone}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Opportunity Form Modal */}
+        {showOpportunityForm && (
+          <div className="modal-overlay">
+            <div className="opportunity-form-modal">
+              <div className="modal-header">
+                <h3>{opportunityForm.id ? 'Edit Opportunity' : 'Post New Opportunity'}</h3>
+                <button 
+                  className="close-modal-btn"
+                  onClick={() => {
+                    setShowOpportunityForm(false)
+                    setOpportunityForm({
+                      title: '',
+                      description: '',
+                      type: 'research_paper',
+                      requirements: '',
+                      deadline: '',
+                      stipend: '',
+                      location: '',
+                      duration: '',
+                      contact_email: '',
+                      contact_phone: ''
+                    })
+                  }}
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              
+              <form className="opportunity-form" onSubmit={(e) => { e.preventDefault(); opportunityForm.id ? handleUpdateOpportunity() : handlePostOpportunity(); }}>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Opportunity Type *</label>
+                    <select 
+                      value={opportunityForm.type}
+                      onChange={(e) => handleOpportunityFieldChange('type', e.target.value)}
+                      required
+                    >
+                      <option value="research_paper">Research Paper</option>
+                      <option value="project">Project</option>
+                      <option value="internship">Internship</option>
+                      <option value="job">Job</option>
+                    </select>
+                  </div>
+                  
+                  <div className="form-group">
+                    <label>Title *</label>
+                    <input
+                      type="text"
+                      value={opportunityForm.title}
+                      onChange={(e) => handleOpportunityFieldChange('title', e.target.value)}
+                      placeholder="Enter opportunity title"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Description *</label>
+                  <textarea
+                    value={opportunityForm.description}
+                    onChange={(e) => handleOpportunityFieldChange('description', e.target.value)}
+                    placeholder="Describe the opportunity in detail"
+                    rows="4"
+                    required
+                  />
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Requirements</label>
+                    <textarea
+                      value={opportunityForm.requirements}
+                      onChange={(e) => handleOpportunityFieldChange('requirements', e.target.value)}
+                      placeholder="Skills, qualifications, etc."
+                      rows="3"
+                    />
+                  </div>
+                  
+                  <div className="form-group">
+                    <label>Deadline</label>
+                    <input
+                      type="date"
+                      value={opportunityForm.deadline}
+                      onChange={(e) => handleOpportunityFieldChange('deadline', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Stipend/Salary</label>
+                    <input
+                      type="text"
+                      value={opportunityForm.stipend}
+                      onChange={(e) => handleOpportunityFieldChange('stipend', e.target.value)}
+                      placeholder="e.g., $500/month, Competitive salary"
+                    />
+                  </div>
+                  
+                  <div className="form-group">
+                    <label>Location</label>
+                    <input
+                      type="text"
+                      value={opportunityForm.location}
+                      onChange={(e) => handleOpportunityFieldChange('location', e.target.value)}
+                      placeholder="e.g., Remote, On-campus, City"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Duration</label>
+                    <input
+                      type="text"
+                      value={opportunityForm.duration}
+                      onChange={(e) => handleOpportunityFieldChange('duration', e.target.value)}
+                      placeholder="e.g., 3 months, 6 months, Full-time"
+                    />
+                  </div>
+                  
+                  <div className="form-group">
+                    <label>Contact Email *</label>
+                    <input
+                      type="email"
+                      value={opportunityForm.contact_email}
+                      onChange={(e) => handleOpportunityFieldChange('contact_email', e.target.value)}
+                      placeholder="Your email for applications"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Contact Phone</label>
+                  <input
+                    type="tel"
+                    value={opportunityForm.contact_phone}
+                    onChange={(e) => handleOpportunityFieldChange('contact_phone', e.target.value)}
+                    placeholder="Optional phone number"
+                  />
+                </div>
+
+                <div className="form-actions">
+                  <button type="button" className="cancel-btn" onClick={() => {
+                    setShowOpportunityForm(false)
+                    setOpportunityForm({
+                      title: '',
+                      description: '',
+                      type: 'research_paper',
+                      requirements: '',
+                      deadline: '',
+                      stipend: '',
+                      location: '',
+                      duration: '',
+                      contact_email: '',
+                      contact_phone: ''
+                    })
+                  }}>
+                    <i className="fas fa-times"></i>
+                    Cancel
+                  </button>
+                  <button type="submit" className="post-btn">
+                    <i className="fas fa-paper-plane"></i>
+                    {opportunityForm.id ? 'Update Opportunity' : 'Post Opportunity'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Applications Tab */}
+        {activeTab === 'applications' && (
+          <div className="applications-section">
+            <div className="section-header">
+              <h2>Student Applications</h2>
+              <p>Review and manage applications for your posted opportunities</p>
+            </div>
+
+            {opportunities.length === 0 ? (
+              <div className="empty-state">
+                <i className="fas fa-file-alt"></i>
+                <h3>No Opportunities Posted</h3>
+                <p>You haven't posted any opportunities yet. Students can only apply to opportunities you create.</p>
+                <button 
+                  className="btn btn-primary"
+                  onClick={() => setActiveTab('opportunities')}
+                >
+                  <i className="fas fa-plus"></i>
+                  Post Your First Opportunity
+                </button>
+              </div>
+            ) : (
+              <div className="opportunities-selector">
+                <h3>Select an Opportunity to View Applications</h3>
+                <div className="opportunities-grid">
+                  {opportunities.map(opportunity => (
+                    <div 
+                      key={opportunity.id} 
+                      className={`opportunity-card ${selectedOpportunity?.id === opportunity.id ? 'selected' : ''}`}
+                      onClick={() => fetchApplications(opportunity.id)}
+                    >
+                      <div className="opportunity-header">
+                        <h4>{opportunity.title}</h4>
+                        <span className={`opportunity-type-badge ${opportunity.type}`}>
+                          {opportunity.type.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <p className="opportunity-description">{opportunity.description}</p>
+                      <div className="opportunity-meta">
+                        <span>📍 {opportunity.location}</span>
+                        <span>💰 {opportunity.stipend || 'Not specified'}</span>
+                        <span>⏱️ {opportunity.duration || 'Not specified'}</span>
+                      </div>
+                      <div className="opportunity-actions">
+                        <button 
+                          className="view-applications-btn"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            fetchApplications(opportunity.id)
+                          }}
+                        >
+                          <i className="fas fa-eye"></i>
+                          View Applications
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {selectedOpportunity && (
+              <div className="applications-list">
+                <div className="applications-header">
+                  <h3>Applications for: {selectedOpportunity.title}</h3>
+                  <button 
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setSelectedOpportunity(null)
+                      setApplications([])
+                    }}
+                  >
+                    <i className="fas fa-arrow-left"></i>
+                    Back to Opportunities
+                  </button>
+                </div>
+
+                {applications.length === 0 ? (
+                  <div className="empty-state">
+                    <i className="fas fa-users"></i>
+                    <h3>No Applications Yet</h3>
+                    <p>No students have applied to this opportunity yet.</p>
+                  </div>
+                ) : (
+                  <div className="applications-grid">
+                    {applications.map(application => (
+                      <div key={application.id} className="application-card">
+                        <div className="application-header">
+                          <div className="student-info">
+                            <div className="student-avatar">
+                              {getAvatar(application.student_name)}
+                            </div>
+                            <div>
+                              <h4>{application.student_name}</h4>
+                              <p>{application.student_email}</p>
+                            </div>
+                          </div>
+                          <span className={`status-badge ${application.status}`}>
+                            {application.status}
+                          </span>
+                        </div>
+
+                        <div className="application-details">
+                          <div className="detail-item">
+                            <label>Applied:</label>
+                            <span>{new Date(application.application_date).toLocaleDateString()}</span>
+                          </div>
+                          <div className="detail-item">
+                            <label>GPA:</label>
+                            <span>{application.gpa || 'Not specified'}</span>
+                          </div>
+                          <div className="detail-item">
+                            <label>Expected Graduation:</label>
+                            <span>{application.expected_graduation ? new Date(application.expected_graduation).toLocaleDateString() : 'Not specified'}</span>
+                          </div>
+                        </div>
+
+                        {application.cover_letter && (
+                          <div className="cover-letter">
+                            <h5>Cover Letter:</h5>
+                            <p>{application.cover_letter}</p>
+                          </div>
+                        )}
+
+                        <div className="application-actions">
+                          <button 
+                            className="view-profile-btn"
+                            onClick={() => handleViewApplication(application)}
+                          >
+                            <i className="fas fa-eye"></i>
+                            View Full Profile
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Application Review Modal */}
+        {showApplicationModal && selectedApplication && (
+          <div className="modal-overlay">
+            <div className="application-modal">
+              <div className="modal-header">
+                <h3>Review Application - {selectedApplication.student_name}</h3>
+                <button 
+                  className="close-modal-btn"
+                  onClick={() => setShowApplicationModal(false)}
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+
+              <div className="modal-content">
+                <div className="student-profile-section">
+                  <h4>Student Profile</h4>
+                  <div className="profile-grid">
+                    <div className="profile-item">
+                      <label>Name:</label>
+                      <span>{selectedApplication.student_name}</span>
+                    </div>
+                    <div className="profile-item">
+                      <label>Email:</label>
+                      <span>{selectedApplication.student_email}</span>
+                    </div>
+                    <div className="profile-item">
+                      <label>Phone:</label>
+                      <span>{selectedApplication.student_phone || 'Not specified'}</span>
+                    </div>
+                    <div className="profile-item">
+                      <label>Address:</label>
+                      <span>{selectedApplication.student_address || 'Not specified'}</span>
+                    </div>
+                    <div className="profile-item">
+                      <label>Bio:</label>
+                      <span>{selectedApplication.student_bio || 'Not specified'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="academic-section">
+                  <h4>Academic Information</h4>
+                  <div className="academic-grid">
+                    <div className="academic-item">
+                      <label>GPA:</label>
+                      <span>{selectedApplication.gpa || 'Not specified'}</span>
+                    </div>
+                    <div className="academic-item">
+                      <label>Expected Graduation:</label>
+                      <span>{selectedApplication.expected_graduation ? new Date(selectedApplication.expected_graduation).toLocaleDateString() : 'Not specified'}</span>
+                    </div>
+                    <div className="academic-item">
+                      <label>Highest Degree:</label>
+                      <span>{selectedApplication.highest_degree || 'Not specified'}</span>
+                    </div>
+                    <div className="academic-item">
+                      <label>Field of Study:</label>
+                      <span>{selectedApplication.field_of_study || 'Not specified'}</span>
+                    </div>
+                    <div className="academic-item">
+                      <label>Institution:</label>
+                      <span>{selectedApplication.institution || 'Not specified'}</span>
+                    </div>
+                    <div className="academic-item">
+                      <label>Completion Year:</label>
+                      <span>{selectedApplication.completion_year || 'Not specified'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {selectedApplication.relevant_courses && (
+                  <div className="courses-section">
+                    <h4>Relevant Courses</h4>
+                    <div className="courses-text">
+                      {selectedApplication.relevant_courses}
+                    </div>
+                  </div>
+                )}
+
+                {selectedApplication.skills && (
+                  <div className="skills-section">
+                    <h4>Skills</h4>
+                    <div className="skills-text">
+                      {selectedApplication.skills}
+                    </div>
+                  </div>
+                )}
+
+                {selectedApplication.experience_summary && (
+                  <div className="experience-section">
+                    <h4>Experience Summary</h4>
+                    <div className="experience-text">
+                      {selectedApplication.experience_summary}
+                    </div>
+                  </div>
+                )}
+
+                {selectedApplication.cover_letter && (
+                  <div className="cover-letter-section">
+                    <h4>Cover Letter</h4>
+                    <div className="cover-letter-text">
+                      {selectedApplication.cover_letter}
+                    </div>
+                  </div>
+                )}
+
+                <div className="review-section">
+                  <h4>Review Decision</h4>
+                  <div className="review-form">
+                    <div className="form-group">
+                      <label>Status:</label>
+                      <select 
+                        value={applicationStatus}
+                        onChange={(e) => setApplicationStatus(e.target.value)}
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Review Notes:</label>
+                      <textarea
+                        value={reviewNotes}
+                        onChange={(e) => setReviewNotes(e.target.value)}
+                        placeholder="Add your review notes here..."
+                        rows="4"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-actions">
+                <button 
+                  className="cancel-btn"
+                  onClick={() => setShowApplicationModal(false)}
+                >
+                  <i className="fas fa-times"></i>
+                  Cancel
+                </button>
+                <button 
+                  className="save-btn"
+                  onClick={handleUpdateApplicationStatus}
+                >
+                  <i className="fas fa-save"></i>
+                  Update Status
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        </main>
+      </div>
     </div>
   )
 }

@@ -1,12 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import Navigation from '../components/Navigation';
+import { Navigation } from '../components/shared';
+import { useAuth } from '../contexts/AuthContext';
 import './HomePage.css';
 import collaborationImage from '../assets/01.jpg';
 
 const HomePage = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState('hero');
+  const { user, isAuthenticated, getDashboardPath } = useAuth();
   
   const sectionRefs = {
     hero: useRef(null),
@@ -80,17 +82,28 @@ const HomePage = () => {
                 meaningful partnerships.
               </p>
               
-              <div className="hero-actions">
-                <Link to="/signup" className="btn btn-primary">
-                  <span>Get Started Free</span>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                    <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </Link>
-                <Link to="/login" className="btn btn-secondary">
-                  Sign In
-                </Link>
-              </div>
+                             <div className="hero-actions">
+                 {isAuthenticated() ? (
+                   <Link to={getDashboardPath()} className="btn btn-primary">
+                     <span>Go to Dashboard</span>
+                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                       <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                     </svg>
+                   </Link>
+                 ) : (
+                   <>
+                     <Link to="/signup" className="btn btn-primary">
+                       <span>Get Started Free</span>
+                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                         <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                       </svg>
+                     </Link>
+                     <Link to="/login" className="btn btn-secondary">
+                       Sign In
+                     </Link>
+                   </>
+                 )}
+               </div>
               
               <div className="hero-stats">
                 <div className="stat">

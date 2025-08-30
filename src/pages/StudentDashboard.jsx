@@ -56,6 +56,19 @@ const StudentDashboard = () => {
   const msgRef = useRef(null);
   const [savingEntryKey, setSavingEntryKey] = useState('');
   const [savedEntryKey, setSavedEntryKey] = useState('');
+  
+  // Application state
+  const [selectedOpportunity, setSelectedOpportunity] = useState(null)
+  const [showApplicationForm, setShowApplicationForm] = useState(false)
+  const [applicationForm, setApplicationForm] = useState({
+    opportunityId: '',
+    coverLetter: '',
+    gpa: '',
+    expectedGraduation: '',
+    relevantCourses: '',
+    skills: '',
+    experienceSummary: ''
+  })
 
   useEffect(() => {
     const rawUser = localStorage.getItem('userData') || localStorage.getItem('user');
@@ -389,11 +402,64 @@ const StudentDashboard = () => {
 
   const handleApplyToOpportunity = async (oppId) => {
     const opp = opportunities.find(o => o.id === oppId);
-    alert('Application submitted!');
-    if (opp) {
-      logActivity('opportunity.apply', { id: oppId, text: `${opp.title} ${opp.description || ''}`, requirements: opp.requirements || [] });
-    } else {
-      logActivity('opportunity.apply', { id: oppId });
+    
+    // Check if already applied
+    const userData = JSON.parse(localStorage.getItem('userData'));
+    if (!userData || !userData.id) {
+      alert('Please log in to apply for opportunities');
+      return;
+    }
+
+    // Show application form modal
+    setSelectedOpportunity(opp);
+    setApplicationForm({
+      opportunityId: oppId,
+      coverLetter: '',
+      gpa: '',
+      expectedGraduation: '',
+      relevantCourses: '',
+      skills: '',
+      experienceSummary: ''
+    });
+    setShowApplicationForm(true);
+  };
+
+  const submitApplication = async () => {
+    try {
+      const userData = JSON.parse(localStorage.getItem('userData'));
+      if (!userData || !userData.id) {
+        alert('Please log in to apply for opportunities');
+        return;
+      }
+
+      await api.applyToOpportunity(applicationForm);
+      
+      // Log activity
+      const opp = opportunities.find(o => o.id === applicationForm.opportunityId);
+      if (opp) {
+        logActivity('opportunity.apply', { 
+          id: applicationForm.opportunityId, 
+          text: `${opp.title} ${opp.description || ''}`, 
+          requirements: opp.requirements || [] 
+        });
+      }
+
+      // Reset form and close modal
+      setApplicationForm({
+        opportunityId: '',
+        coverLetter: '',
+        gpa: '',
+        expectedGraduation: '',
+        relevantCourses: '',
+        skills: '',
+        experienceSummary: ''
+      });
+      setShowApplicationForm(false);
+      setSelectedOpportunity(null);
+      
+      alert('Application submitted successfully!');
+    } catch (error) {
+      alert('Failed to submit application: ' + error.message);
     }
   };
 
@@ -566,14 +632,23 @@ const StudentDashboard = () => {
                   <span>🏷️ {opp.type}</span>
                   <span>📅 {opp.closingDate ? new Date(opp.closingDate).toLocaleDateString() : 'N/A'}</span>
                   <span>📌 {opp.status}</span>
+                  {opp.stipend && <span>💰 {opp.stipend}</span>}
+                  {opp.duration && <span>⏱️ {opp.duration}</span>}
                 </div>
                 {opp.requirements && (
                   <div className="opp-requirements">
                     <strong>Requirements:</strong>
-                    <div className="skills-tags">
-                      {opp.requirements.map((req, idx) => (
-                        <span key={idx} className="skill-tag">{req}</span>
-                      ))}
+                    <div className="requirements-text">
+                      {opp.requirements}
+                    </div>
+                  </div>
+                )}
+                {(opp.contact_email || opp.contact_phone) && (
+                  <div className="opp-contact">
+                    <strong>Contact:</strong>
+                    <div className="contact-info">
+                      {opp.contact_email && <span>📧 {opp.contact_email}</span>}
+                      {opp.contact_phone && <span>📞 {opp.contact_phone}</span>}
                     </div>
                   </div>
                 )}
@@ -1188,6 +1263,144 @@ const StudentDashboard = () => {
         {activeTab === 'credentials' && renderCredentialsTab()}
         {activeTab === 'activity' && renderActivityTab()}
       </div>
+
+      {/* Application Form Modal */}
+      {showApplicationForm && selectedOpportunity && (
+        <div className="modal-overlay">
+          <div className="application-form-modal">
+            <div className="modal-header">
+              <h3>Apply for: {selectedOpportunity.title}</h3>
+              <button 
+                className="close-modal-btn"
+                onClick={() => {
+                  setShowApplicationForm(false)
+                  setSelectedOpportunity(null)
+                  setApplicationForm({
+                    opportunityId: '',
+                    coverLetter: '',
+                    gpa: '',
+                    expectedGraduation: '',
+                    relevantCourses: '',
+                    skills: '',
+                    experienceSummary: ''
+                  })
+                }}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <div className="modal-content">
+              <div className="opportunity-summary">
+                <h4>Opportunity Details</h4>
+                <div className="opportunity-info">
+                  <p><strong>Type:</strong> {selectedOpportunity.type}</p>
+                  <p><strong>Location:</strong> {selectedOpportunity.location}</p>
+                  <p><strong>Stipend:</strong> {selectedOpportunity.stipend || 'Not specified'}</p>
+                  <p><strong>Duration:</strong> {selectedOpportunity.duration || 'Not specified'}</p>
+                  <p><strong>Description:</strong> {selectedOpportunity.description}</p>
+                </div>
+              </div>
+
+              <form className="application-form" onSubmit={(e) => { e.preventDefault(); submitApplication(); }}>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>GPA *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="4"
+                      value={applicationForm.gpa}
+                      onChange={(e) => setApplicationForm(prev => ({ ...prev, gpa: e.target.value }))}
+                      placeholder="e.g., 3.8"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="form-group">
+                    <label>Expected Graduation Date *</label>
+                    <input
+                      type="date"
+                      value={applicationForm.expectedGraduation}
+                      onChange={(e) => setApplicationForm(prev => ({ ...prev, expectedGraduation: e.target.value }))}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Relevant Courses</label>
+                  <textarea
+                    value={applicationForm.relevantCourses}
+                    onChange={(e) => setApplicationForm(prev => ({ ...prev, relevantCourses: e.target.value }))}
+                    placeholder="List relevant courses you've taken (e.g., CS 101: Introduction to Programming, MATH 201: Linear Algebra)"
+                    rows="3"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Skills</label>
+                  <textarea
+                    value={applicationForm.skills}
+                    onChange={(e) => setApplicationForm(prev => ({ ...prev, skills: e.target.value }))}
+                    placeholder="List your relevant skills (e.g., Python, React, Machine Learning, Git)"
+                    rows="3"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Experience Summary</label>
+                  <textarea
+                    value={applicationForm.experienceSummary}
+                    onChange={(e) => setApplicationForm(prev => ({ ...prev, experienceSummary: e.target.value }))}
+                    placeholder="Briefly describe your relevant experience, projects, or achievements"
+                    rows="3"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Cover Letter *</label>
+                  <textarea
+                    value={applicationForm.coverLetter}
+                    onChange={(e) => setApplicationForm(prev => ({ ...prev, coverLetter: e.target.value }))}
+                    placeholder="Write a cover letter explaining why you're interested in this opportunity and why you're a good fit..."
+                    rows="6"
+                    required
+                  />
+                </div>
+
+                <div className="form-actions">
+                  <button 
+                    type="button" 
+                    className="cancel-btn"
+                    onClick={() => {
+                      setShowApplicationForm(false)
+                      setSelectedOpportunity(null)
+                      setApplicationForm({
+                        opportunityId: '',
+                        coverLetter: '',
+                        gpa: '',
+                        expectedGraduation: '',
+                        relevantCourses: '',
+                        skills: '',
+                        experienceSummary: ''
+                      })
+                    }}
+                  >
+                    <i className="fas fa-times"></i>
+                    Cancel
+                  </button>
+                  <button type="submit" className="submit-btn">
+                    <i className="fas fa-paper-plane"></i>
+                    Submit Application
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../config/api.js'
-import SearchBar from '../components/SearchBar'
+import { SearchBar } from '../components/shared'
 
 export default function OpportunitiesList() {
   const [user, setUser] = useState(null)

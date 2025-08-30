@@ -445,12 +445,199 @@
 
 .opp-requirements {
   margin-bottom: 20px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border-left: 4px solid #3b82f6;
 }
 
 .opp-requirements strong {
   color: #2d3748;
   display: block;
   margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.requirements-text {
+  color: #475569;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.opp-contact {
+  margin-bottom: 20px;
+  padding: 12px;
+  background: #f0f9ff;
+  border-radius: 8px;
+  border-left: 4px solid #0ea5e9;
+}
+
+.opp-contact strong {
+  color: #2d3748;
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.contact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.contact-info span {
+  color: #475569;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Application Form Modal */
+.application-form-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 0;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  animation: slideInUp 0.3s ease-out;
+}
+
+.opportunity-summary {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border-left: 4px solid #3b82f6;
+}
+
+.opportunity-summary h4 {
+  margin: 0 0 12px 0;
+  color: #2d3748;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.opportunity-info p {
+  margin: 0 0 8px 0;
+  color: #4a5568;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.opportunity-info p:last-child {
+  margin-bottom: 0;
+}
+
+.application-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.application-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.application-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.application-form label {
+  font-weight: 600;
+  color: #4a5568;
+  font-size: 0.875rem;
+}
+
+.application-form input,
+.application-form textarea {
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+
+.application-form input:focus,
+.application-form textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.application-form textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.application-form .form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.application-form .cancel-btn,
+.application-form .submit-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+}
+
+.application-form .cancel-btn {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+
+.application-form .cancel-btn:hover {
+  background: #cbd5e0;
+}
+
+.application-form .submit-btn {
+  background: #3b82f6;
+  color: white;
+}
+
+.application-form .submit-btn:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+}
+
+/* Responsive design for application form */
+@media (max-width: 768px) {
+  .application-form-modal {
+    margin: 1rem;
+    max-height: calc(100vh - 2rem);
+  }
+  
+  .application-form .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .application-form .form-actions {
+    flex-direction: column;
+  }
+  
+  .modal-content {
+    padding: 16px;
+  }
 }
 
 .skills-tags {

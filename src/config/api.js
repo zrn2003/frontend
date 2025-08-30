@@ -32,9 +32,23 @@ export const API_ENDPOINTS = {
   // Academic routes
   ACADEMIC_STUDENTS: `${API_BASE_URL}/academic/students`,
   ACADEMIC_DELETE_STUDENT: (id) => `${API_BASE_URL}/academic/students/${id}`,
+  ACADEMIC_OPPORTUNITIES: (academicId) => `${API_BASE_URL}/academic/${academicId}/opportunities`,
+  POST_OPPORTUNITY: `${API_BASE_URL}/opportunities`,
+  DELETE_OPPORTUNITY: (id) => `${API_BASE_URL}/opportunities/${id}`,
+  
+  // Applications
+  APPLICATIONS_FOR_OPPORTUNITY: (opportunityId) => `${API_BASE_URL}/applications/opportunity/${opportunityId}`,
+  STUDENT_APPLICATIONS: (studentId) => `${API_BASE_URL}/applications/student/${studentId}`,
+  APPLY_TO_OPPORTUNITY: `${API_BASE_URL}/applications/apply`,
+  UPDATE_APPLICATION_STATUS: (applicationId) => `${API_BASE_URL}/applications/${applicationId}/status`,
+  WITHDRAW_APPLICATION: (applicationId) => `${API_BASE_URL}/applications/${applicationId}/withdraw`,
   
   // University routes
-  UNIVERSITY_STATS: `${API_BASE_URL}/university/stats`,
+  UNIVERSITIES: `${API_BASE_URL}/university/universities`,
+  UNIVERSITY_BY_DOMAIN: (domain) => `${API_BASE_URL}/university/universities/${domain}`,
+  UNIVERSITY_REGISTRATION_REQUESTS: (universityId) => `${API_BASE_URL}/university/universities/${universityId}/registration-requests`,
+  UNIVERSITY_STATS: (universityId) => `${API_BASE_URL}/university/universities/${universityId}/stats`,
+  REGISTRATION_REQUEST_UPDATE: (requestId) => `${API_BASE_URL}/university/registration-requests/${requestId}`,
   UNIVERSITY_STUDENTS: `${API_BASE_URL}/university/students`,
   UNIVERSITY_DEPARTMENTS: `${API_BASE_URL}/university/departments`,
   UNIVERSITY_COURSES: `${API_BASE_URL}/university/courses`,
@@ -42,6 +56,11 @@ export const API_ENDPOINTS = {
   UNIVERSITY_REPORTS: `${API_BASE_URL}/university/reports`,
   UNIVERSITY_INSTITUTES: `${API_BASE_URL}/university/institutes`,
   UNIVERSITY_INSTITUTE_DETAIL: (domain) => `${API_BASE_URL}/university/institutes/${domain}`,
+  USER_PROFILE: (userId) => `${API_BASE_URL}/university/users/${userId}/profile`,
+  UPDATE_USER_PROFILE: (userId) => `${API_BASE_URL}/university/users/${userId}/profile`,
+  DELETE_USER: (userId) => `${API_BASE_URL}/university/users/${userId}`,
+  UNIVERSITY_PROFILE: (universityId) => `${API_BASE_URL}/university/universities/${universityId}/profile`,
+  DEBUG_USER_INFO: `${API_BASE_URL}/university/debug/user-info`,
   
   // Health
   HEALTH: `${API_BASE_URL}/health`
@@ -74,8 +93,14 @@ export const apiRequest = async (url, options = {}) => {
     defaultOptions.headers['x-user-id'] = userId
   } else {
     // If no user ID and this is not a public endpoint, throw an error
-    const publicEndpoints = ['/api/auth/login', '/api/auth/signup', '/api/health']
+    const publicEndpoints = ['/api/auth/login', '/api/auth/signup', '/api/health', '/api/university/universities']
     const isPublicEndpoint = publicEndpoints.some(endpoint => url.includes(endpoint))
+    
+    // For signup requests, don't send user ID even if available
+    if (url.includes('/api/auth/signup')) {
+      console.log('Signup request - not sending user ID')
+      userId = null
+    }
     
     if (!isPublicEndpoint) {
       console.error('No user ID found for protected endpoint:', url)
@@ -233,14 +258,58 @@ export const api = {
   deleteAcademicStudent: (id) => apiRequest(API_ENDPOINTS.ACADEMIC_DELETE_STUDENT(id), {
     method: 'DELETE'
   }),
+  getAcademicOpportunities: (academicId) => apiRequest(API_ENDPOINTS.ACADEMIC_OPPORTUNITIES(academicId)),
+  postOpportunity: (opportunityData) => apiRequest(API_ENDPOINTS.POST_OPPORTUNITY, {
+    method: 'POST',
+    body: JSON.stringify(opportunityData)
+  }),
+  deleteOpportunity: (id) => apiRequest(API_ENDPOINTS.DELETE_OPPORTUNITY(id), {
+    method: 'DELETE'
+  }),
+
+  // Applications
+  getApplicationsForOpportunity: (opportunityId) => apiRequest(API_ENDPOINTS.APPLICATIONS_FOR_OPPORTUNITY(opportunityId)),
+  getStudentApplications: (studentId) => apiRequest(API_ENDPOINTS.STUDENT_APPLICATIONS(studentId)),
+  applyToOpportunity: (applicationData) => apiRequest(API_ENDPOINTS.APPLY_TO_OPPORTUNITY, {
+    method: 'POST',
+    body: JSON.stringify(applicationData)
+  }),
+  updateApplicationStatus: (applicationId, statusData) => apiRequest(API_ENDPOINTS.UPDATE_APPLICATION_STATUS(applicationId), {
+    method: 'PUT',
+    body: JSON.stringify(statusData)
+  }),
+  withdrawApplication: (applicationId) => apiRequest(API_ENDPOINTS.WITHDRAW_APPLICATION(applicationId), {
+    method: 'PUT'
+  }),
 
   // University routes
-  getUniversityStats: () => apiRequest(API_ENDPOINTS.UNIVERSITY_STATS),
+  getUniversities: () => apiRequest(API_ENDPOINTS.UNIVERSITIES),
+  getUniversityByDomain: (domain) => apiRequest(API_ENDPOINTS.UNIVERSITY_BY_DOMAIN(domain)),
+  getUniversityRegistrationRequests: (universityId) => apiRequest(API_ENDPOINTS.UNIVERSITY_REGISTRATION_REQUESTS(universityId)),
+  getUniversityStats: (universityId) => apiRequest(API_ENDPOINTS.UNIVERSITY_STATS(universityId)),
+  updateRegistrationRequest: (requestId, data) => apiRequest(API_ENDPOINTS.REGISTRATION_REQUEST_UPDATE(requestId), {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+  createUniversity: (universityData) => apiRequest(API_ENDPOINTS.UNIVERSITIES, {
+    method: 'POST',
+    body: JSON.stringify(universityData)
+  }),
   getUniversityStudents: () => apiRequest(API_ENDPOINTS.UNIVERSITY_STUDENTS),
   getUniversityDepartments: () => apiRequest(API_ENDPOINTS.UNIVERSITY_DEPARTMENTS),
   getUniversityCourses: () => apiRequest(API_ENDPOINTS.UNIVERSITY_COURSES),
   getUniversityFinance: () => apiRequest(API_ENDPOINTS.UNIVERSITY_FINANCE),
   getUniversityReports: () => apiRequest(API_ENDPOINTS.UNIVERSITY_REPORTS),
   getUniversityInstitutes: () => apiRequest(API_ENDPOINTS.UNIVERSITY_INSTITUTES),
-  getUniversityInstituteDetail: (domain) => apiRequest(API_ENDPOINTS.UNIVERSITY_INSTITUTE_DETAIL(domain))
+  getUniversityInstituteDetail: (domain) => apiRequest(API_ENDPOINTS.UNIVERSITY_INSTITUTE_DETAIL(domain)),
+  getUserProfile: (userId) => apiRequest(API_ENDPOINTS.USER_PROFILE(userId)),
+  updateUserProfile: (userId, profileData) => apiRequest(API_ENDPOINTS.UPDATE_USER_PROFILE(userId), {
+    method: 'PUT',
+    body: JSON.stringify(profileData)
+  }),
+  deleteUser: (userId) => apiRequest(API_ENDPOINTS.DELETE_USER(userId), {
+    method: 'DELETE'
+  }),
+  getUniversityProfile: (universityId) => apiRequest(API_ENDPOINTS.UNIVERSITY_PROFILE(universityId)),
+  getDebugUserInfo: () => apiRequest(API_ENDPOINTS.DEBUG_USER_INFO)
 }

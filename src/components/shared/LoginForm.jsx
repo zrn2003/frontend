@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { api } from '../config/api.js'
+import { api } from '../../config/api.js'
 import './LoginForm.css'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../contexts/AuthContext'
 
 export default function LoginForm({ onSubmit }) {
   const [email, setEmail] = useState('')
@@ -12,6 +13,7 @@ export default function LoginForm({ onSubmit }) {
   const [userType, setUserType] = useState('student') // default to student
   const [passwordStrength, setPasswordStrength] = useState(0)
   const navigate = useNavigate()
+  const { login, getDashboardPath } = useAuth()
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -23,59 +25,41 @@ export default function LoginForm({ onSubmit }) {
       const backendRole = (data?.user?.role || '').toLowerCase()
       if (!backendRole) throw new Error('Invalid account response.')
 
-      // Validate entrypoint vs role; allow student entry via selector
-      if (userType === 'student' && backendRole !== 'student') {
-        const adjustedUser = { ...data.user, role: 'student' }
-        localStorage.setItem('user', JSON.stringify(adjustedUser))
-        localStorage.setItem('userData', JSON.stringify(adjustedUser))
-        localStorage.setItem('userRole', 'student')
-        localStorage.setItem('userType', userType)
-        navigate('/student')
-        setTimeout(() => { if (location.pathname !== '/student') location.assign('/student') }, 50)
-        onSubmit && onSubmit({ email, password })
+      // Check for approval status
+      if (data?.user?.approval_status === 'pending') {
+        // Store user data for pending approval page
+        localStorage.setItem('pendingUser', JSON.stringify(data.user))
+        navigate('/pending-approval')
         return
       }
 
-      if (userType === 'icm' && backendRole === 'student') {
-        throw new Error('Student accounts must use the Student login.')
+      if (data?.user?.approval_status === 'rejected') {
+        throw new Error('Your registration has been rejected. Please contact your university administrator.')
       }
 
-      if (userType === 'academic' && backendRole !== 'academic_leader' && backendRole !== 'admin') {
-        throw new Error('Only Academic Leader accounts can use the Academic login.')
+      // Strict role validation - users can only login through their designated login type
+      if (userType === 'student' && backendRole !== 'student') {
+        throw new Error('This account is not a student account. Please use the appropriate login type.')
+      }
+
+      if (userType === 'icm' && !['admin', 'manager', 'viewer'].includes(backendRole)) {
+        throw new Error('This account is not authorized for ICM access. Please use the appropriate login type.')
+      }
+
+      if (userType === 'academic' && backendRole !== 'academic_leader') {
+        throw new Error('This account is not an Academic Leader account. Please use the appropriate login type.')
+      }
+
+      if (userType === 'university' && backendRole !== 'university_admin') {
+        throw new Error('This account is not a University Admin account. Please use the appropriate login type.')
       }
       
-      // Store user info (both legacy and new keys)
-      localStorage.setItem('user', JSON.stringify(data.user))
-      localStorage.setItem('userData', JSON.stringify(data.user))
-      localStorage.setItem('userRole', backendRole)
-      localStorage.setItem('userType', userType)
+      // Use the auth context to login
+      login({ user: data.user, role: backendRole })
 
-      // Debug logging
-      console.log('Login successful - stored user data:', {
-        user: data.user,
-        backendRole,
-        userType,
-        localStorage: {
-          user: localStorage.getItem('user'),
-          userData: localStorage.getItem('userData'),
-          userRole: localStorage.getItem('userRole'),
-          userType: localStorage.getItem('userType')
-        }
-      })
-
-      // Redirect
-      if (backendRole === 'student') {
-        navigate('/student')
-        setTimeout(() => { if (location.pathname !== '/student') location.assign('/student') }, 50)
-      } else if (backendRole === 'academic_leader' || backendRole === 'admin') {
-        navigate('/academic')
-      } else if (backendRole === 'university_admin') {
-        navigate('/university')
-      } else if (backendRole === 'admin' || backendRole === 'manager' || backendRole === 'viewer') {
-        navigate('/icm')
-      } else {
-        navigate('/')
-      }
+      // Redirect to appropriate dashboard
+      const dashboardPath = getDashboardPath()
+      navigate(dashboardPath)
 
       onSubmit && onSubmit({ email, password })
     } catch (e) {

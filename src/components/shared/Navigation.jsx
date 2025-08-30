@@ -1,5 +1,6 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import './Navigation.css';
 
 const Navigation = () => {
@@ -7,11 +8,8 @@ const Navigation = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const navigate = useNavigate();
   const userMenuRef = useRef(null);
-
-  const user = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem('user') || localStorage.getItem('userData') || 'null') } catch { return null }
-  }, [])
-  const role = (user?.role || '').toLowerCase()
+  const { user, isAuthenticated, logout, hasRole } = useAuth();
+  const role = (user?.role || '').toLowerCase();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -22,8 +20,7 @@ const Navigation = () => {
   };
 
   const handleLogout = () => {
-    localStorage.clear();
-    navigate('/login');
+    logout();
     setIsUserMenuOpen(false);
     setIsMenuOpen(false);
   };
@@ -89,23 +86,23 @@ const Navigation = () => {
           <Link to="/contact" className="nav-link">Contact Us</Link>
           
           {/* Role-based Dashboard Links */}
-          {(role === 'admin' || role === 'manager' || role === 'viewer') && (
+          {hasRole('icm') && (
             <Link to="/icm" className="nav-link">ICM Dashboard</Link>
           )}
-          {role === 'student' && (
+          {hasRole('student') && (
             <Link to="/student" className="nav-link">Student Dashboard</Link>
           )}
-          {(role === 'academic_leader' || role === 'admin') && (
+          {hasRole('academic_leader') && (
             <Link to="/academic" className="nav-link">Academic Dashboard</Link>
           )}
-          {(role === 'university_admin' || role === 'admin') && (
+          {hasRole('university_admin') && (
             <Link to="/university" className="nav-link">University Dashboard</Link>
           )}
         </div>
 
         {/* User Menu */}
         <div className="nav-user-menu" ref={userMenuRef}>
-          {!user ? (
+          {!isAuthenticated() ? (
             <div className="auth-buttons">
               <Link to="/login" className="btn btn-text">Sign In</Link>
               <Link to="/signup" className="btn btn-primary">Get Started</Link>
@@ -191,20 +188,20 @@ const Navigation = () => {
         <Link to="/about" className="nav-link" onClick={() => setIsMenuOpen(false)}>About Us</Link>
         <Link to="/contact" className="nav-link" onClick={() => setIsMenuOpen(false)}>Contact Us</Link>
         
-        {(role === 'admin' || role === 'manager' || role === 'viewer') && (
+        {hasRole('icm') && (
           <Link to="/icm" className="nav-link" onClick={() => setIsMenuOpen(false)}>ICM Dashboard</Link>
         )}
-        {role === 'student' && (
+        {hasRole('student') && (
           <Link to="/student" className="nav-link" onClick={() => setIsMenuOpen(false)}>Student Dashboard</Link>
         )}
-        {(role === 'academic_leader' || role === 'admin') && (
+        {hasRole('academic_leader') && (
           <Link to="/academic" className="nav-link" onClick={() => setIsMenuOpen(false)}>Academic Dashboard</Link>
         )}
-        {(role === 'university_admin' || role === 'admin') && (
+        {hasRole('university_admin') && (
           <Link to="/university" className="nav-link" onClick={() => setIsMenuOpen(false)}>University Dashboard</Link>
         )}
         
-        {!user ? (
+        {!isAuthenticated() ? (
           <div className="mobile-auth">
             <Link to="/login" className="btn btn-text" onClick={() => setIsMenuOpen(false)}>Sign In</Link>
             <Link to="/signup" className="btn btn-primary" onClick={() => setIsMenuOpen(false)}>Get Started</Link>

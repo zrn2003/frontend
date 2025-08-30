@@ -11,8 +11,8 @@ const getEnvVar = (key, fallback) => {
   }
 }
 
-const API_TARGET = getEnvVar('VITE_API_TARGET', 'https://trustteams-backend.vercel.app')
-const API_BASE_URL = getEnvVar('VITE_API_BASE_URL', 'https://trustteams-backend.vercel.app/api')
+const API_TARGET = getEnvVar('VITE_API_TARGET', 'http://localhost:3001')
+const API_BASE_URL = getEnvVar('VITE_API_BASE_URL', 'http://localhost:3001/api')
 const NODE_ENV = getEnvVar('NODE_ENV', 'production')
 
 // https://vite.dev/config/
