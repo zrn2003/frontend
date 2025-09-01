@@ -1,9 +1,9 @@
 // API Configuration
-// Use environment variable for production, fallback to localhost for development
+// Force localhost for development, use environment variable for production
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
-  (import.meta.env.MODE === 'production' 
-    ? 'https://trustteams-backend.vercel.app/api' 
-    : 'http://localhost:3001/api')
+  (import.meta.env.DEV || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:3001/api' 
+    : 'https://trustteams-backend.vercel.app/api')
 
 // Debug logging for API configuration
 console.log('API Configuration:', {
@@ -12,7 +12,9 @@ console.log('API Configuration:', {
   NODE_ENV: import.meta.env.MODE,
   MODE: import.meta.env.MODE,
   DEV: import.meta.env.DEV,
-  PROD: import.meta.env.PROD
+  PROD: import.meta.env.PROD,
+  HOSTNAME: window.location.hostname,
+  IS_LOCALHOST: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
 })
 
 // API endpoints
