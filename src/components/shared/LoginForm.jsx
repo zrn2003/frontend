@@ -75,17 +75,79 @@ export default function LoginForm({ onSubmit }) {
     setPasswordStrength(s)
   }
 
+  function getPanelContent() {
+    switch (userType) {
+      case 'icm':
+        return {
+          logo: 'TT',
+          title: 'Industry Collaboration Manager',
+          description: 'Coordinate with partners, streamline approvals, and accelerate partnerships.',
+          highlights: [
+            'Secure role-based access',
+            'Real-time partner updates',
+            'Centralized records'
+          ]
+        }
+      case 'student':
+        return {
+          logo: 'TT',
+          title: 'Student Portal',
+          description: 'Access opportunities, track applications, and manage your academic journey.',
+          highlights: [
+            'Browse opportunities',
+            'Track applications',
+            'Manage profile'
+          ]
+        }
+      case 'academic':
+        return {
+          logo: 'TT',
+          title: 'Academic Leader Dashboard',
+          description: 'Manage student applications, approve opportunities, and oversee academic partnerships.',
+          highlights: [
+            'Review applications',
+            'Approve opportunities',
+            'Academic oversight'
+          ]
+        }
+      case 'university':
+        return {
+          logo: 'TT',
+          title: 'University Administration',
+          description: 'Manage institutional partnerships, oversee academic programs, and coordinate with industry.',
+          highlights: [
+            'Institutional management',
+            'Program oversight',
+            'Partnership coordination'
+          ]
+        }
+      default:
+        return {
+          logo: 'TT',
+          title: 'Industry Collaboration Manager',
+          description: 'Coordinate with partners, streamline approvals, and accelerate partnerships.',
+          highlights: [
+            'Secure role-based access',
+            'Real-time partner updates',
+            'Centralized records'
+          ]
+        }
+    }
+  }
+
+  const panelContent = getPanelContent()
+
   return (
     <div className="login-page">
       <aside className="brand-panel">
         <div className="brand-content">
-          <div className="logo-mark" aria-hidden>ICM</div>
-          <h2>Industry Collaboration Manager</h2>
-          <p>Coordinate with partners, streamline approvals, and accelerate partnerships.</p>
+          <div className="logo-mark" aria-hidden>{panelContent.logo}</div>
+          <h2>{panelContent.title}</h2>
+          <p>{panelContent.description}</p>
           <ul className="highlights">
-            <li>Secure role-based access</li>
-            <li>Real-time partner updates</li>
-            <li>Centralized records</li>
+            {panelContent.highlights.map((highlight, index) => (
+              <li key={index}>{highlight}</li>
+            ))}
           </ul>
         </div>
       </aside>

@@ -85,7 +85,7 @@
 .role-select .role-btn {
   border: 1px solid var(--glass-border);
   background: var(--glass);
-  color: #e5e7eb;
+  color: #000000;
   border-radius: 12px;
   padding: 10px 12px;
   display: flex; align-items: center; gap: 10px;

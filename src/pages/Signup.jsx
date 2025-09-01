@@ -129,18 +129,20 @@ export default function Signup() {
     }
   }
 
+  const panelContent = getPanelContent()
+
   return (
     <div className="login-page">
       {/* Left branding */}
       <aside className="brand-panel">
         <div className="brand-content">
-          <div className="logo-mark">ICM</div>
-          <h2>Join TrustTeams</h2>
-          <p>Build trusted collaboration across industry, academia and students.</p>
+          <div className="logo-mark">{panelContent.logo}</div>
+          <h2>{panelContent.title}</h2>
+          <p>{panelContent.description}</p>
           <ul className="highlights">
-            <li>✨ Modern, secure onboarding</li>
-            <li>🚀 Role-tailored experiences</li>
-            <li>🔐 Data privacy first</li>
+            {panelContent.highlights.map((highlight, index) => (
+              <li key={index}>{highlight}</li>
+            ))}
           </ul>
         </div>
       </aside>
@@ -224,7 +226,8 @@ export default function Signup() {
                         border: '1px solid #e2e8f0',
                         borderRadius: '8px',
                         fontSize: '14px',
-                        backgroundColor: 'white'
+                        backgroundColor: 'white',
+                        color: 'black'
                       }}
                     >
                       <option value="">Select a university</option>
