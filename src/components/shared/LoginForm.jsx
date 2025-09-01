@@ -25,14 +25,7 @@ export default function LoginForm({ onSubmit }) {
       const backendRole = (data?.user?.role || '').toLowerCase()
       if (!backendRole) throw new Error('Invalid account response.')
 
-      // Check for approval status
-      if (data?.user?.approval_status === 'pending') {
-        // Store user data for pending approval page
-        localStorage.setItem('pendingUser', JSON.stringify(data.user))
-        navigate('/pending-approval')
-        return
-      }
-
+      // Check for rejected status (students and academic leaders are now auto-approved)
       if (data?.user?.approval_status === 'rejected') {
         throw new Error('Your registration has been rejected. Please contact your university administrator.')
       }
@@ -63,7 +56,12 @@ export default function LoginForm({ onSubmit }) {
 
       onSubmit && onSubmit({ email, password })
     } catch (e) {
-      setError(e.message || 'Something went wrong. Please try again.')
+      // Handle email verification errors
+      if (e.message && e.message.includes('verify your email')) {
+        setError('Please verify your email address before signing in. Check your inbox for the verification link.');
+      } else {
+        setError(e.message || 'Something went wrong. Please try again.')
+      }
     } finally {
       setLoading(false)
     }

@@ -49,7 +49,7 @@ export default function Signup() {
     setStrength(s)
   }
 
-  const requiresUniversity = role === 'student' || role === 'academic' || role === 'university';
+  const requiresUniversity = role === 'university';
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -70,16 +70,6 @@ export default function Signup() {
           return;
         }
       }
-    } else if (requiresUniversity && !university_id) {
-      setError("Please select a university");
-      setLoading(false);
-      return;
-    }
-
-    if ((role === 'student' || role === 'academic') && !institute_name.trim()) {
-      setError("Please enter your institute name");
-      setLoading(false);
-      return;
     }
 
     try {
@@ -92,7 +82,7 @@ export default function Signup() {
         role: mappedRole
       };
 
-      // Add university and institute data for relevant roles
+      // Add university data for university admin role only
       if (role === 'university') {
         if (universityMode === "select") {
           signupData.university_id = parseInt(university_id);
@@ -105,20 +95,15 @@ export default function Signup() {
           signupData.university_contact_phone = university_contact_phone.trim();
           signupData.university_established_year = university_established_year ? parseInt(university_established_year) : null;
         }
-      } else if (requiresUniversity) {
-        signupData.university_id = parseInt(university_id);
-      }
-
-      if (role === 'student' || role === 'academic') {
-        signupData.institute_name = institute_name.trim();
       }
 
       const response = await api.signup(signupData);
       
-      if (response.message.includes('pending approval')) {
-        setSuccess("🎉 Registration submitted successfully! Please wait for university administrator approval before you can log in.");
+      // Check if email was sent successfully
+      if (response.emailSent) {
+        setSuccess("🎉 Account created successfully! Please check your email to verify your account before signing in.");
       } else {
-        setSuccess("🎉 Account created successfully! You can now sign in.");
+        setSuccess("🎉 Account created successfully! However, there was an issue sending the verification email. Please contact support.");
       }
       
       // Reset form
@@ -164,7 +149,7 @@ export default function Signup() {
       <main className="form-panel">
         <div className="login-card">
           <h2 className="login-title">Create your account</h2>
-          <p className="login-subtitle">It takes less than a minute</p>
+          <p className="login-subtitle">Students and academic leaders can sign up with just name, email, and password!</p>
 
           <form onSubmit={handleSubmit} className="form">
             {/* Role Selection */}
@@ -185,7 +170,7 @@ export default function Signup() {
               <input type="email" placeholder="you@institute.edu" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </label>
 
-            {/* University Selection */}
+            {/* University Selection - Only for University Admin */}
             {requiresUniversity && (
               <>
                 {role === 'university' && (
@@ -330,19 +315,7 @@ export default function Signup() {
               </>
             )}
 
-            {/* Institute Name for Students and Academic Leaders */}
-            {(role === 'student' || role === 'academic') && (
-              <label className="field">
-                <span>Institute/Department Name</span>
-                <input 
-                  type="text" 
-                  placeholder="e.g., Computer Science Department, Engineering Institute" 
-                  value={institute_name} 
-                  onChange={(e) => setInstituteName(e.target.value)} 
-                  required 
-                />
-              </label>
-            )}
+            
 
             <label className="field">
               <span>Password</span>
@@ -361,7 +334,7 @@ export default function Signup() {
             {success && <div className="success">{success}</div>}
 
             <button type="submit" className="btn-submit" disabled={loading}>
-              {loading ? "Creating…" : `Create ${(role === 'academic' ? 'academic_leader' : role === 'university' ? 'university_admin' : role)} account`}
+              {loading ? "Creating…" : `Create ${(role === 'academic' ? 'academic leader' : role === 'university' ? 'university admin' : role)} account`}
             </button>
 
             <p className="footer-text" style={{ color:'#cbd5e1' }}>

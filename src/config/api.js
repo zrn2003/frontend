@@ -3,7 +3,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
   (import.meta.env.MODE === 'production' 
     ? 'https://trustteams-backend.vercel.app/api' 
-    : '/api')
+    : 'http://localhost:3001/api')
 
 // Debug logging for API configuration
 console.log('API Configuration:', {
@@ -60,7 +60,26 @@ export const API_ENDPOINTS = {
   UPDATE_USER_PROFILE: (userId) => `${API_BASE_URL}/university/users/${userId}/profile`,
   DELETE_USER: (userId) => `${API_BASE_URL}/university/users/${userId}`,
   UNIVERSITY_PROFILE: (universityId) => `${API_BASE_URL}/university/universities/${universityId}/profile`,
+  UPDATE_UNIVERSITY_PROFILE: (universityId) => `${API_BASE_URL}/university/universities/${universityId}/profile`,
   DEBUG_USER_INFO: `${API_BASE_URL}/university/debug/user-info`,
+  
+  // Email Verification
+  VERIFY_EMAIL: (token) => `${API_BASE_URL}/auth/verify-email/${token}`,
+  RESEND_VERIFICATION: `${API_BASE_URL}/auth/resend-verification`,
+  
+  // ICM routes
+  ICM_UNIVERSITIES: `${API_BASE_URL}/icm/universities`,
+  ICM_UNIVERSITY_DETAILS: (id) => `${API_BASE_URL}/icm/universities/${id}`,
+  ICM_STATS: `${API_BASE_URL}/icm/stats`,
+  ICM_SEARCH_UNIVERSITIES: `${API_BASE_URL}/icm/universities/search`,
+  ICM_OPPORTUNITIES: `${API_BASE_URL}/icm/opportunities`,
+  ICM_OPPORTUNITY: (opportunityId) => `${API_BASE_URL}/icm/opportunities/${opportunityId}`,
+  ICM_DEBUG_USER: `${API_BASE_URL}/icm/debug/user`,
+  ICM_HEALTH: `${API_BASE_URL}/icm/health`,
+  ICM_OPPORTUNITY_APPLICATIONS: (opportunityId) => `${API_BASE_URL}/icm/opportunities/${opportunityId}/applications`,
+  ICM_UPDATE_APPLICATION_STATUS: (applicationId) => `${API_BASE_URL}/icm/applications/${applicationId}/status`,
+  ICM_STUDENT_PROFILE: (studentId) => `${API_BASE_URL}/icm/students/${studentId}/profile`,
+  ICM_PROFILE: `${API_BASE_URL}/icm/profile`,
   
   // Health
   HEALTH: `${API_BASE_URL}/health`
@@ -93,7 +112,7 @@ export const apiRequest = async (url, options = {}) => {
     defaultOptions.headers['x-user-id'] = userId
   } else {
     // If no user ID and this is not a public endpoint, throw an error
-    const publicEndpoints = ['/api/auth/login', '/api/auth/signup', '/api/health', '/api/university/universities']
+    const publicEndpoints = ['/api/auth/login', '/api/auth/signup', '/api/auth/verify-email', '/api/health', '/api/university/universities']
     const isPublicEndpoint = publicEndpoints.some(endpoint => url.includes(endpoint))
     
     // For signup requests, don't send user ID even if available
@@ -175,13 +194,19 @@ export const apiRequest = async (url, options = {}) => {
 
     return data
   } catch (error) {
-    console.error('API Request Failed:', { url, error: error.message })
+    console.error('API Request Failed:', { url, error: error.message, errorType: error.name })
+    
+    // More specific error messages
     if (error.name === 'TypeError' && error.message.includes('JSON')) {
       throw new Error('Server returned invalid response. Please check if the backend is running.')
     }
     if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      throw new Error('Network error. Please check your internet connection and try again.')
+      throw new Error(`Network error connecting to ${url}. Please check if the backend server is running on localhost:3001`)
     }
+    if (error.message.includes('Failed to fetch')) {
+      throw new Error(`Cannot connect to ${url}. Please ensure the backend server is running on localhost:3001`)
+    }
+    
     throw error
   }
 }
@@ -311,5 +336,44 @@ export const api = {
     method: 'DELETE'
   }),
   getUniversityProfile: (universityId) => apiRequest(API_ENDPOINTS.UNIVERSITY_PROFILE(universityId)),
-  getDebugUserInfo: () => apiRequest(API_ENDPOINTS.DEBUG_USER_INFO)
+  updateUniversityProfile: (universityId, profileData) => apiRequest(API_ENDPOINTS.UPDATE_UNIVERSITY_PROFILE(universityId), {
+    method: 'PUT',
+    body: JSON.stringify(profileData)
+  }),
+  getDebugUserInfo: () => apiRequest(API_ENDPOINTS.DEBUG_USER_INFO),
+  
+  // Email Verification
+  verifyEmail: (token) => apiRequest(API_ENDPOINTS.VERIFY_EMAIL(token), { method: 'GET' }),
+  resendVerification: (email) => apiRequest(API_ENDPOINTS.RESEND_VERIFICATION, { method: 'POST', body: JSON.stringify({ email }) }),
+
+  // ICM API functions
+  getIcmUniversities: () => apiRequest(API_ENDPOINTS.ICM_UNIVERSITIES),
+  getIcmUniversityDetails: (id) => apiRequest(API_ENDPOINTS.ICM_UNIVERSITY_DETAILS(id)),
+  getIcmStats: () => apiRequest(API_ENDPOINTS.ICM_STATS),
+  getIcmOpportunities: () => apiRequest(API_ENDPOINTS.ICM_OPPORTUNITIES),
+  getIcmOpportunity: (opportunityId) => apiRequest(API_ENDPOINTS.ICM_OPPORTUNITY(opportunityId)),
+  updateIcmOpportunity: (opportunityId, opportunityData) => apiRequest(API_ENDPOINTS.ICM_OPPORTUNITY(opportunityId), {
+    method: 'PUT',
+    body: JSON.stringify(opportunityData)
+  }),
+  deleteIcmOpportunity: (opportunityId) => apiRequest(API_ENDPOINTS.ICM_OPPORTUNITY(opportunityId), {
+    method: 'DELETE'
+  }),
+  getIcmDebugUser: () => apiRequest(API_ENDPOINTS.ICM_DEBUG_USER),
+  getIcmHealth: () => apiRequest(API_ENDPOINTS.ICM_HEALTH),
+  getIcmOpportunityApplications: (opportunityId) => apiRequest(API_ENDPOINTS.ICM_OPPORTUNITY_APPLICATIONS(opportunityId)),
+  updateIcmApplicationStatus: (applicationId, status, reviewNotes) => apiRequest(API_ENDPOINTS.ICM_UPDATE_APPLICATION_STATUS(applicationId), {
+    method: 'PUT',
+    body: JSON.stringify({ status, reviewNotes })
+  }),
+  getIcmStudentProfile: (studentId) => apiRequest(API_ENDPOINTS.ICM_STUDENT_PROFILE(studentId)),
+  getIcmProfile: () => apiRequest(API_ENDPOINTS.ICM_PROFILE),
+  updateIcmProfile: (profileData) => apiRequest(API_ENDPOINTS.ICM_PROFILE, {
+    method: 'PUT',
+    body: JSON.stringify(profileData)
+  }),
+  searchIcmUniversities: (query) => {
+    const url = `${API_ENDPOINTS.ICM_SEARCH_UNIVERSITIES}?q=${encodeURIComponent(query)}`
+    return apiRequest(url)
+  }
 }

@@ -17,6 +17,10 @@ const UniversityDashboard = () => {
   const [selectedUserProfile, setSelectedUserProfile] = useState(null);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
+  const [isEditingUniversity, setIsEditingUniversity] = useState(false);
+  const [editedUniversity, setEditedUniversity] = useState({});
   const profileRef = useRef();
 
   // Dashboard Data States
@@ -29,6 +33,11 @@ const UniversityDashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
+  }, []);
+
+  // Keep sidebar always open - no responsive closing
+  useEffect(() => {
+    setSidebarOpen(true);
   }, []);
 
   // Auto-hide notification after 3 seconds
@@ -57,6 +66,55 @@ const UniversityDashboard = () => {
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
+  };
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    // Keep sidebar always open
+  };
+
+  const handleThemeToggle = () => {
+    setDarkMode(!darkMode);
+  };
+
+  const handleUniversityEdit = () => {
+    setIsEditingUniversity(true);
+    setEditedUniversity({ ...universityInfo });
+  };
+
+  const handleUniversitySave = async () => {
+    try {
+      console.log('Saving university changes:', editedUniversity);
+      
+      // Call API to update university profile in database
+      const response = await api.updateUniversityProfile(user?.university_id || 1, editedUniversity);
+      
+      // Update local state with the response from server
+      if (response.university) {
+        setUniversityInfo(response.university);
+        setIsEditingUniversity(false);
+        
+        showNotification('University profile updated successfully!', 'success');
+        console.log('University profile saved successfully:', response.university);
+      } else {
+        throw new Error('Invalid response format from server');
+      }
+    } catch (error) {
+      console.error('Error updating university profile:', error);
+      showNotification('Failed to update university profile. Please try again.', 'error');
+    }
+  };
+
+  const handleUniversityCancel = () => {
+    setIsEditingUniversity(false);
+    setEditedUniversity({});
+  };
+
+  const handleUniversityFieldChange = (field, value) => {
+    setEditedUniversity(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   const fetchDashboardData = async () => {
@@ -454,8 +512,7 @@ const UniversityDashboard = () => {
           <div className="table-header">
             <div className="header-cell"><i className="fas fa-user"></i> Name</div>
             <div className="header-cell"><i className="fas fa-envelope"></i> Email</div>
-            <div className="header-cell"><i className="fas fa-university"></i> Institute</div>
-            <div className="header-cell"><i className="fas fa-check-circle"></i> Status</div>
+            <div className="header-cell"><i className="fas fa-university"></i> Department</div>
             <div className="header-cell"><i className="fas fa-cogs"></i> Actions</div>
           </div>
           <div className="table-body">
@@ -472,12 +529,6 @@ const UniversityDashboard = () => {
                 <div className="table-cell">
                   <i className="fas fa-university"></i>
                   {student.institute_name || 'Not specified'}
-                </div>
-                <div className="table-cell">
-                  <span className={`status-badge ${student.approval_status}`}>
-                    <i className={`fas ${student.approval_status === 'approved' ? 'fa-check' : student.approval_status === 'pending' ? 'fa-clock' : 'fa-times'}`}></i>
-                    {student.approval_status}
-                  </span>
                 </div>
                 <div className="table-cell">
                   <div className="action-buttons">
@@ -522,8 +573,7 @@ const UniversityDashboard = () => {
           <div className="table-header">
             <div className="header-cell"><i className="fas fa-user"></i> Name</div>
             <div className="header-cell"><i className="fas fa-envelope"></i> Email</div>
-            <div className="header-cell"><i className="fas fa-university"></i> Institute</div>
-            <div className="header-cell"><i className="fas fa-check-circle"></i> Status</div>
+            <div className="header-cell"><i className="fas fa-university"></i> Department</div>
             <div className="header-cell"><i className="fas fa-cogs"></i> Actions</div>
           </div>
           <div className="table-body">
@@ -540,12 +590,6 @@ const UniversityDashboard = () => {
                 <div className="table-cell">
                   <i className="fas fa-university"></i>
                   {leader.institute_name || 'Not specified'}
-                </div>
-                <div className="table-cell">
-                  <span className={`status-badge ${leader.approval_status}`}>
-                    <i className={`fas ${leader.approval_status === 'approved' ? 'fa-check' : leader.approval_status === 'pending' ? 'fa-clock' : 'fa-times'}`}></i>
-                    {leader.approval_status}
-                  </span>
                 </div>
                 <div className="table-cell">
                   <div className="action-buttons">
@@ -599,7 +643,7 @@ const UniversityDashboard = () => {
                   <p><i className="fas fa-university"></i> {request.institute_name}</p>
                 </div>
                 <div className="request-status">
-                  <span className="status-badge pending">
+                  <span className="request-status-text">
                     <i className="fas fa-clock"></i> Pending
                   </span>
                 </div>
@@ -650,11 +694,11 @@ const UniversityDashboard = () => {
                   <p><i className="fas fa-envelope"></i> {request.user_email}</p>
                   <p><i className="fas fa-university"></i> {request.institute_name}</p>
                       </div>
-                <div className="request-status">
-                  <span className="status-badge pending">
+                                <div className="request-status">
+                  <span className="request-status-text">
                     <i className="fas fa-clock"></i> Pending
                   </span>
-                      </div>
+                </div>
                       </div>
               <div className="request-actions">
                 <button 
@@ -686,7 +730,26 @@ const UniversityDashboard = () => {
     <div className="dashboard-section">
       <div className="section-header">
         <h2><i className="fas fa-university"></i> University Profile</h2>
-        <span className="count-badge"><i className="fas fa-info-circle"></i> {universityInfo.name || 'University'}</span>
+        <div className="section-actions">
+          {!isEditingUniversity ? (
+            <button className="btn btn-outline" onClick={handleUniversityEdit}>
+              <i className="fas fa-edit"></i>
+              Edit Profile
+            </button>
+          ) : (
+            <>
+              <button className="btn btn-success" onClick={handleUniversitySave}>
+                <i className="fas fa-save"></i>
+                Save
+              </button>
+              <button className="btn btn-outline" onClick={handleUniversityCancel}>
+                <i className="fas fa-times"></i>
+                Cancel
+              </button>
+            </>
+          )}
+          <span className="count-badge"><i className="fas fa-info-circle"></i> {universityInfo.name || 'University'}</span>
+        </div>
       </div>
       
       <div className="university-profile-content">
@@ -695,18 +758,65 @@ const UniversityDashboard = () => {
             <i className="fas fa-university"></i>
           </div>
           <div className="university-info">
-            <h3><i className="fas fa-university"></i> {universityInfo.name || 'University Name'}</h3>
-            <p className="university-domain"><i className="fas fa-globe"></i> {universityInfo.domain || 'university.edu'}</p>
-            <p className="university-address"><i className="fas fa-map-marker-alt"></i> {universityInfo.address || 'Address not specified'}</p>
-            <div className="university-status">
-              <span className={`status-badge ${universityInfo.is_active ? 'approved' : 'rejected'}`}>
-                <i className={`fas ${universityInfo.is_active ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
-                {universityInfo.is_active ? 'Active' : 'Inactive'}
-              </span>
-              <span className="established-year">
-                <i className="fas fa-calendar-alt"></i> Established: {universityInfo.established_year || 'Not specified'}
-              </span>
-            </div>
+            {isEditingUniversity ? (
+              <>
+                <input
+                  type="text"
+                  className="university-edit-input"
+                  value={editedUniversity.name || ''}
+                  onChange={(e) => handleUniversityFieldChange('name', e.target.value)}
+                  placeholder="Enter university name"
+                />
+                <input
+                  type="text"
+                  className="university-edit-input"
+                  value={editedUniversity.domain || ''}
+                  onChange={(e) => handleUniversityFieldChange('domain', e.target.value)}
+                  placeholder="Enter domain"
+                />
+                <textarea
+                  className="university-edit-textarea"
+                  value={editedUniversity.address || ''}
+                  onChange={(e) => handleUniversityFieldChange('address', e.target.value)}
+                  placeholder="Enter address"
+                  rows="2"
+                />
+                <div className="university-status">
+                  <label className="university-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={editedUniversity.is_active || false}
+                      onChange={(e) => handleUniversityFieldChange('is_active', e.target.checked)}
+                    />
+                    <span>Active University</span>
+                  </label>
+                  <input
+                    type="number"
+                    className="university-edit-input"
+                    value={editedUniversity.established_year || ''}
+                    onChange={(e) => handleUniversityFieldChange('established_year', e.target.value)}
+                    placeholder="Established year"
+                    min="1800"
+                    max={new Date().getFullYear()}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <h3><i className="fas fa-university"></i> {universityInfo.name || 'University Name'}</h3>
+                <p className="university-domain"><i className="fas fa-globe"></i> {universityInfo.domain || 'university.edu'}</p>
+                <p className="university-address"><i className="fas fa-map-marker-alt"></i> {universityInfo.address || 'Address not specified'}</p>
+                <div className="university-status">
+                  <span className="university-status-text">
+                    <i className={`fas ${universityInfo.is_active ? 'fa-check-circle' : 'fa-pause-circle'}`}></i>
+                    {universityInfo.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                  <span className="established-year">
+                    <i className="fas fa-calendar-alt"></i> Established: {universityInfo.established_year || 'Not specified'}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </div>
         
@@ -734,25 +844,65 @@ const UniversityDashboard = () => {
             <h4><i className="fas fa-address-book"></i> Contact Information</h4>
             <div className="detail-item">
               <span className="detail-label"><i className="fas fa-envelope"></i> Email:</span>
-              <span className="detail-value">{universityInfo.contact_email || 'Not specified'}</span>
+              {isEditingUniversity ? (
+                <input
+                  type="email"
+                  className="university-edit-input"
+                  value={editedUniversity.contact_email || ''}
+                  onChange={(e) => handleUniversityFieldChange('contact_email', e.target.value)}
+                  placeholder="Enter contact email"
+                />
+              ) : (
+                <span className="detail-value">{universityInfo.contact_email || 'Not specified'}</span>
+              )}
             </div>
             <div className="detail-item">
               <span className="detail-label"><i className="fas fa-phone"></i> Phone:</span>
-              <span className="detail-value">{universityInfo.contact_phone || 'Not specified'}</span>
+              {isEditingUniversity ? (
+                <input
+                  type="tel"
+                  className="university-edit-input"
+                  value={editedUniversity.contact_phone || ''}
+                  onChange={(e) => handleUniversityFieldChange('contact_phone', e.target.value)}
+                  placeholder="Enter contact phone"
+                />
+              ) : (
+                <span className="detail-value">{universityInfo.contact_phone || 'Not specified'}</span>
+              )}
             </div>
             <div className="detail-item">
               <span className="detail-label"><i className="fas fa-globe"></i> Website:</span>
-              <span className="detail-value">
-                {universityInfo.website ? (
-                  <a href={universityInfo.website} target="_blank" rel="noopener noreferrer">
-                    <i className="fas fa-external-link-alt"></i> {universityInfo.website}
-                  </a>
-                ) : 'Not specified'}
-              </span>
+              {isEditingUniversity ? (
+                <input
+                  type="url"
+                  className="university-edit-input"
+                  value={editedUniversity.website || ''}
+                  onChange={(e) => handleUniversityFieldChange('website', e.target.value)}
+                  placeholder="Enter website URL"
+                />
+              ) : (
+                <span className="detail-value">
+                  {universityInfo.website ? (
+                    <a href={universityInfo.website} target="_blank" rel="noopener noreferrer">
+                      <i className="fas fa-external-link-alt"></i> {universityInfo.website}
+                    </a>
+                  ) : 'Not specified'}
+                </span>
+              )}
             </div>
             <div className="detail-item">
               <span className="detail-label"><i className="fas fa-map-marker-alt"></i> Address:</span>
-              <span className="detail-value">{universityInfo.address || 'Not specified'}</span>
+              {isEditingUniversity ? (
+                <textarea
+                  className="university-edit-textarea"
+                  value={editedUniversity.address || ''}
+                  onChange={(e) => handleUniversityFieldChange('address', e.target.value)}
+                  placeholder="Enter address"
+                  rows="2"
+                />
+              ) : (
+                <span className="detail-value">{universityInfo.address || 'Not specified'}</span>
+              )}
             </div>
           </div>
           
@@ -760,24 +910,67 @@ const UniversityDashboard = () => {
             <h4><i className="fas fa-info-circle"></i> University Information</h4>
             <div className="detail-item">
               <span className="detail-label"><i className="fas fa-university"></i> Name:</span>
-              <span className="detail-value">{universityInfo.name || 'Not specified'}</span>
+              {isEditingUniversity ? (
+                <input
+                  type="text"
+                  className="university-edit-input"
+                  value={editedUniversity.name || ''}
+                  onChange={(e) => handleUniversityFieldChange('name', e.target.value)}
+                  placeholder="Enter university name"
+                />
+              ) : (
+                <span className="detail-value">{universityInfo.name || 'Not specified'}</span>
+              )}
             </div>
             <div className="detail-item">
               <span className="detail-label"><i className="fas fa-globe"></i> Domain:</span>
-              <span className="detail-value">{universityInfo.domain || 'Not specified'}</span>
+              {isEditingUniversity ? (
+                <input
+                  type="text"
+                  className="university-edit-input"
+                  value={editedUniversity.domain || ''}
+                  onChange={(e) => handleUniversityFieldChange('domain', e.target.value)}
+                  placeholder="Enter domain"
+                />
+              ) : (
+                <span className="detail-value">{universityInfo.domain || 'Not specified'}</span>
+              )}
             </div>
             <div className="detail-item">
               <span className="detail-label"><i className="fas fa-calendar-alt"></i> Established:</span>
-              <span className="detail-value">{universityInfo.established_year || 'Not specified'}</span>
+              {isEditingUniversity ? (
+                <input
+                  type="number"
+                  className="university-edit-input"
+                  value={editedUniversity.established_year || ''}
+                  onChange={(e) => handleUniversityFieldChange('established_year', e.target.value)}
+                  placeholder="Enter established year"
+                  min="1800"
+                  max={new Date().getFullYear()}
+                />
+              ) : (
+                <span className="detail-value">{universityInfo.established_year || 'Not specified'}</span>
+              )}
             </div>
             <div className="detail-item">
               <span className="detail-label"><i className="fas fa-check-circle"></i> Status:</span>
-              <span className="detail-value">
-                <span className={`status-badge ${universityInfo.is_active ? 'approved' : 'rejected'}`}>
-                  <i className={`fas ${universityInfo.is_active ? 'fa-check' : 'fa-times'}`}></i>
-                  {universityInfo.is_active ? 'Active' : 'Inactive'}
+              {isEditingUniversity ? (
+                <label className="university-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={editedUniversity.is_active || false}
+                    onChange={(e) => handleUniversityFieldChange('is_active', e.target.checked)}
+                  />
+                  <span>Active University</span>
+                </label>
+              ) : (
+                <span className="detail-value">
+                  {/* <span className={`status-badge ${universityInfo.is_active ? 'approved' : 'inactive'}`}>
+                    <i className={`fas ${universityInfo.is_active ? 'fa-check' : 'fa-pause'}`}></i>
+                    {universityInfo.is_active ? 'Active' : 'Inactive'}
+                  </span> */}
                 </span>
-              </span>
+              )}
             </div>
           </div>
         </div>
@@ -818,6 +1011,56 @@ const UniversityDashboard = () => {
             <div className="detail-item">
               <span className="detail-label"><i className="fas fa-id-card"></i> University ID:</span>
               <span className="detail-value">{universityInfo.id || 'Not specified'}</span>
+            </div>
+            <div className="detail-item">
+              {/* <span className="detail-label"><i className="fas fa-award"></i> Accreditation Status:</span>
+              {isEditingUniversity ? (
+                // <select
+                //   className="university-edit-input"
+                //   value={editedUniversity.accreditation_status || 'pending'}
+                //   onChange={(e) => handleUniversityFieldChange('accreditation_status', e.target.value)}
+                // >
+                //   <option value="pending">Pending</option>
+                //   <option value="accredited">Accredited</option>
+                //   <option value="provisional">Provisional</option>
+                // </select>
+              ) : (
+                <span className="detail-value">
+                  <span className="accreditation-status-text">
+                    <i className={`fas ${universityInfo.accreditation_status === 'accredited' ? 'fa-check' : universityInfo.accreditation_status === 'provisional' ? 'fa-clock' : 'fa-clock'}`}></i>
+                    {universityInfo.accreditation_status ? universityInfo.accreditation_status.charAt(0).toUpperCase() + universityInfo.accreditation_status.slice(1) : 'Pending'}
+                  </span>
+                </span>
+              )} */}
+            </div>
+            <div className="detail-item">
+              <span className="detail-label"><i className="fas fa-users"></i> Student Capacity:</span>
+              {isEditingUniversity ? (
+                <input
+                  type="number"
+                  className="university-edit-input"
+                  value={editedUniversity.student_capacity || ''}
+                  onChange={(e) => handleUniversityFieldChange('student_capacity', e.target.value)}
+                  placeholder="Enter student capacity"
+                  min="1"
+                />
+              ) : (
+                <span className="detail-value">{universityInfo.student_capacity || 'Not specified'}</span>
+              )}
+            </div>
+            <div className="detail-item">
+              <span className="detail-label"><i className="fas fa-graduation-cap"></i> Program Types:</span>
+              {isEditingUniversity ? (
+                <input
+                  type="text"
+                  className="university-edit-input"
+                  value={editedUniversity.program_types || ''}
+                  onChange={(e) => handleUniversityFieldChange('program_types', e.target.value)}
+                  placeholder="e.g., Undergraduate, Graduate, PhD"
+                />
+              ) : (
+                <span className="detail-value">{universityInfo.program_types || 'Not specified'}</span>
+              )}
             </div>
           </div>
         </div>
@@ -964,7 +1207,7 @@ const UniversityDashboard = () => {
                 <div className="detail-item">
                   <span className="detail-label">Role:</span>
                   <span className="detail-value">
-                    <span className={`status-badge ${userProfile.role || 'university_admin'}`}>
+                    <span className="role-text">
                       {userProfile.role || 'University Admin'}
                     </span>
                   </span>
@@ -1066,7 +1309,7 @@ const UniversityDashboard = () => {
                 <div className="detail-item">
                   <span className="detail-label"><i className="fas fa-user-shield"></i> Role:</span>
                   <span className="detail-value">
-                    <span className={`status-badge ${selectedUserProfile.role || 'user'}`}>
+                    <span className="role-text">
                       <i className={`fas ${selectedUserProfile.role === 'student' ? 'fa-user-graduate' : selectedUserProfile.role === 'academic_leader' ? 'fa-chalkboard-teacher' : 'fa-user'}`}></i>
                       {selectedUserProfile.role || 'User'}
                     </span>
@@ -1079,7 +1322,7 @@ const UniversityDashboard = () => {
                 <div className="detail-item">
                   <span className="detail-label"><i className="fas fa-check-circle"></i> Approval Status:</span>
                   <span className="detail-value">
-                    <span className={`status-badge ${selectedUserProfile.approval_status || 'pending'}`}>
+                    <span className="approval-status-text">
                       <i className={`fas ${selectedUserProfile.approval_status === 'approved' ? 'fa-check' : selectedUserProfile.approval_status === 'rejected' ? 'fa-times' : 'fa-clock'}`}></i>
                       {selectedUserProfile.approval_status || 'Pending'}
                     </span>
@@ -1088,7 +1331,7 @@ const UniversityDashboard = () => {
                 <div className="detail-item">
                   <span className="detail-label"><i className="fas fa-toggle-on"></i> Account Status:</span>
                   <span className="detail-value">
-                    <span className={`status-badge ${selectedUserProfile.is_active ? 'approved' : 'rejected'}`}>
+                    <span className="account-status-text">
                       <i className={`fas ${selectedUserProfile.is_active ? 'fa-check' : 'fa-times'}`}></i>
                       {selectedUserProfile.is_active ? 'Active' : 'Inactive'}
                     </span>
@@ -1128,7 +1371,7 @@ const UniversityDashboard = () => {
                     <div key={index} className="education-item">
                       <div className="education-header">
                         <h5>{edu.degree}</h5>
-                        <span className={`status-badge ${edu.is_current ? 'current' : 'completed'}`}>
+                        <span className="education-status-text">
                           <i className={`fas ${edu.is_current ? 'fa-clock' : 'fa-check'}`}></i>
                           {edu.is_current ? 'Current' : 'Completed'}
                         </span>
@@ -1155,7 +1398,7 @@ const UniversityDashboard = () => {
                     <div key={index} className="experience-item">
                       <div className="experience-header">
                         <h5>{exp.title}</h5>
-                        <span className={`status-badge ${exp.is_current ? 'current' : 'completed'}`}>
+                        <span className="experience-status-text">
                           <i className={`fas ${exp.is_current ? 'fa-clock' : 'fa-check'}`}></i>
                           {exp.is_current ? 'Current' : 'Completed'}
                         </span>
@@ -1205,7 +1448,7 @@ const UniversityDashboard = () => {
                     <div key={index} className="project-item">
                       <div className="project-header">
                         <h5>{project.project_name}</h5>
-                        <span className={`status-badge ${project.is_current ? 'current' : 'completed'}`}>
+                        <span className="project-status-text">
                           <i className={`fas ${project.is_current ? 'fa-clock' : 'fa-check'}`}></i>
                           {project.is_current ? 'Ongoing' : 'Completed'}
                         </span>
@@ -1299,7 +1542,7 @@ const UniversityDashboard = () => {
   }
 
   return (
-    <div className="university-dashboard">
+    <div className={`university-dashboard ${darkMode ? 'dark-mode' : ''}`}>
       {notification && (
         <div className={`notification ${notification.type}`}>
           <i className={`fas fa-${notification.type === 'success' ? 'check-circle' : 'exclamation-circle'}`}></i>
@@ -1310,56 +1553,35 @@ const UniversityDashboard = () => {
         </div>
       )}
       
-      <aside className="sidebar">
+      {/* Mobile Overlay - Disabled to keep sidebar always open */}
+      <div 
+        className="sidebar-overlay"
+        style={{display: 'none'}}
+      ></div>
+      
+      {/* Modern Sidebar */}
+      <aside className="sidebar open">
         <div className="sidebar-header">
           <div className="logo">
-            <i className="fas fa-university"></i>
-            <span>TrustTeams</span>
+            <div className="logo-icon">
+              <i className="fas fa-graduation-cap"></i>
+            </div>
+            <span className="logo-text">TrustTeams</span>
           </div>
-        </div>
-
-        <div className="sidebar-profile" ref={profileRef}>
-          <div className="profile-info" onClick={() => setShowProfileDropdown(!showProfileDropdown)}>
-            <div className="profile-avatar">
-              <i className="fas fa-user"></i>
-            </div>
-            <div className="profile-details">
-              <div className="profile-name">{user?.name || 'Admin'}</div>
-              <div className="profile-role">University Admin</div>
-            </div>
-            <i className={`fas fa-chevron-down ${showProfileDropdown ? 'rotated' : ''}`}></i>
-          </div>
-          
-          {showProfileDropdown && (
-            <div className="profile-dropdown">
-              <div className="dropdown-item" onClick={() => {
-                setShowProfileModal(true);
-                fetchUserProfile();
-              }}>
-                <i className="fas fa-user-circle"></i>
-                <span>View Profile</span>
-              </div>
-              <div className="dropdown-divider"></div>
-              <div className="dropdown-item" onClick={logout}>
-                <i className="fas fa-sign-out-alt"></i>
-                <span>Logout</span>
-              </div>
-            </div>
-          )}
         </div>
 
         <nav className="sidebar-nav">
           <button
             className={`nav-item ${activeTab === 'overview' ? 'active' : ''}`}
-            onClick={() => setActiveTab('overview')}
+            onClick={() => handleTabChange('overview')}
           >
-            <i className="fas fa-chart-line"></i>
-            <span>Overview</span>
+            <i className="fas fa-home"></i>
+            <span>Dashboard</span>
           </button>
           
           <button
             className={`nav-item ${activeTab === 'students' ? 'active' : ''}`}
-            onClick={() => setActiveTab('students')}
+            onClick={() => handleTabChange('students')}
           >
             <i className="fas fa-user-graduate"></i>
             <span>Students</span>
@@ -1367,7 +1589,7 @@ const UniversityDashboard = () => {
           
           <button
             className={`nav-item ${activeTab === 'academic-leaders' ? 'active' : ''}`}
-            onClick={() => setActiveTab('academic-leaders')}
+            onClick={() => handleTabChange('academic-leaders')}
           >
             <i className="fas fa-chalkboard-teacher"></i>
             <span>Academic Leaders</span>
@@ -1375,40 +1597,68 @@ const UniversityDashboard = () => {
           
           <button
             className={`nav-item ${activeTab === 'student-requests' ? 'active' : ''}`}
-            onClick={() => setActiveTab('student-requests')}
+            onClick={() => handleTabChange('student-requests')}
           >
             <i className="fas fa-user-plus"></i>
             <span>Student Requests</span>
             {studentRequests.length > 0 && (
-              <span className="request-badge">{studentRequests.length}</span>
+              <span className="notification-badge">{studentRequests.length}</span>
             )}
           </button>
           
           <button
             className={`nav-item ${activeTab === 'academic-leader-requests' ? 'active' : ''}`}
-            onClick={() => setActiveTab('academic-leader-requests')}
+            onClick={() => handleTabChange('academic-leader-requests')}
           >
             <i className="fas fa-user-tie"></i>
             <span>Academic Leader Requests</span>
             {academicLeaderRequests.length > 0 && (
-              <span className="request-badge">{academicLeaderRequests.length}</span>
+              <span className="notification-badge">{academicLeaderRequests.length}</span>
             )}
           </button>
           
           <button
             className={`nav-item ${activeTab === 'university-profile' ? 'active' : ''}`}
-            onClick={() => setActiveTab('university-profile')}
+            onClick={() => handleTabChange('university-profile')}
           >
             <i className="fas fa-university"></i>
             <span>University Profile</span>
           </button>
         </nav>
+
+        <div className="sidebar-footer">
+          <button 
+            className="theme-toggle"
+            onClick={handleThemeToggle}
+            title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            <i className={`fas fa-${darkMode ? 'sun' : 'moon'}`}></i>
+            <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
+            <div className="toggle-switch">
+              <div className="toggle-slider"></div>
+            </div>
+          </button>
+          
+          <button 
+            className="logout-button"
+            onClick={logout}
+            title="Logout"
+          >
+            <i className="fas fa-sign-out-alt"></i>
+            <span>Logout</span>
+          </button>
+        </div>
       </aside>
 
-      <main className="main-content">
+      <main className="main-content sidebar-open">
         <div className="content-header">
-          <h1>{universityInfo.name || 'University Dashboard'}</h1>
-          <p>Manage students, academic leaders, and registration requests</p>
+          <div className="header-left">
+            <h1>{universityInfo.name || 'University Dashboard'}</h1>
+            <p style={{color: '#8969b1'}}>Manage students, academic leaders, and registration requests</p>
+          </div>
+          <div className="header-right">
+            {/* Mobile menu toggle removed - sidebar always stays open */}
+          </div>
         </div>
 
         <div className="content-body">

@@ -2,7 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import './styles/theme.css'
 import HomePage from './pages/HomePage'
 import { LoginForm, ProtectedRoute, DashboardRedirect, PendingApproval } from './components/shared'
-import IcmDashboard from './pages/IcmDashboard'
+import IcmDashboard from './components/icm/IcmDashboard'
 import StudentDashboard from './pages/StudentDashboard'
 import Signup from './pages/Signup'
 import OpportunitiesList from './pages/OpportunitiesList'
@@ -13,6 +13,7 @@ import UniversityDashboard from './pages/UniversityDashboard'
 import UniversityProfile from './pages/UniversityProfile'
 import Institutes from './pages/Institutes'
 import InstituteDetail from './pages/InstituteDetail'
+import EmailVerification from './pages/EmailVerification'
 import { AuthProvider } from './contexts/AuthContext'
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
           <Route path="/login" element={<LoginForm onSubmit={(creds)=>console.log('submit', creds)} />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/pending-approval" element={<PendingApproval />} />
+          <Route path="/verify-email" element={<EmailVerification />} />
           
           {/* Protected role-based routes */}
           <Route path="/student" element={

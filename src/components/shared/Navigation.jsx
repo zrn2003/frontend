@@ -81,7 +81,6 @@ const Navigation = () => {
         {/* Desktop Navigation */}
         <div className="nav-menu-desktop">
           <Link to="/" className="nav-link">Home</Link>
-          <Link to="/opportunities" className="nav-link">Opportunities</Link>
           <Link to="/about" className="nav-link">About Us</Link>
           <Link to="/contact" className="nav-link">Contact Us</Link>
           
@@ -184,7 +183,6 @@ const Navigation = () => {
       {/* Mobile Navigation */}
       <div className={`nav-menu-mobile ${isMenuOpen ? 'active' : ''}`}>
         <Link to="/" className="nav-link" onClick={() => setIsMenuOpen(false)}>Home</Link>
-        <Link to="/opportunities" className="nav-link" onClick={() => setIsMenuOpen(false)}>Opportunities</Link>
         <Link to="/about" className="nav-link" onClick={() => setIsMenuOpen(false)}>About Us</Link>
         <Link to="/contact" className="nav-link" onClick={() => setIsMenuOpen(false)}>Contact Us</Link>
         
