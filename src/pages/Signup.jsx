@@ -51,6 +51,66 @@ export default function Signup() {
 
   const requiresUniversity = role === 'university';
 
+  function getPanelContent() {
+    switch (role) {
+      case 'manager':
+        return {
+          logo: 'TT',
+          title: 'Industry Collaboration Manager',
+          description: 'Join TrustTeams to coordinate with partners, streamline approvals, and accelerate partnerships.',
+          highlights: [
+            '✨ Secure role-based access',
+            '🚀 Real-time partner updates',
+            '🔐 Centralized records'
+          ]
+        }
+      case 'student':
+        return {
+          logo: 'TT',
+          title: 'Student Portal',
+          description: 'Join TrustTeams to access opportunities, track applications, and manage your academic journey.',
+          highlights: [
+            '✨ Browse opportunities',
+            '🚀 Track applications',
+            '🔐 Manage profile'
+          ]
+        }
+      case 'academic':
+        return {
+          logo: 'TT',
+          title: 'Academic Leader Dashboard',
+          description: 'Join TrustTeams to manage student applications, approve opportunities, and oversee academic partnerships.',
+          highlights: [
+            '✨ Review applications',
+            '🚀 Approve opportunities',
+            '🔐 Academic oversight'
+          ]
+        }
+      case 'university':
+        return {
+          logo: 'TT',
+          title: 'University Administration',
+          description: 'Join TrustTeams to manage institutional partnerships, oversee academic programs, and coordinate with industry.',
+          highlights: [
+            '✨ Institutional management',
+            '🚀 Program oversight',
+            '🔐 Partnership coordination'
+          ]
+        }
+      default:
+        return {
+          logo: 'TT',
+          title: 'Join TrustTeams',
+          description: 'Join TrustTeams to connect, collaborate, and grow.',
+          highlights: [
+            '✨ Secure access',
+            '🚀 Real-time updates',
+            '🔐 Centralized records'
+          ]
+        }
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
