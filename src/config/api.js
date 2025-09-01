@@ -8,10 +8,8 @@ const isLocalDevelopment =
   window.location.port === '5173' ||
   window.location.port === '3000'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
-  (isLocalDevelopment 
-    ? 'http://localhost:3001/api' 
-    : 'https://trustteams-backend.vercel.app/api')
+// Force production API for live website
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://trustteams-backend.vercel.app/api'
 
 // Debug logging for API configuration
 console.log('API Configuration:', {
