@@ -1,7 +1,15 @@
 // API Configuration
-// Force localhost for development, use environment variable for production
+// Simple and reliable environment detection
+const isLocalDevelopment = 
+  import.meta.env.DEV || 
+  window.location.hostname === 'localhost' || 
+  window.location.hostname === '127.0.0.1' ||
+  window.location.hostname.includes('localhost') ||
+  window.location.port === '5173' ||
+  window.location.port === '3000'
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
-  (import.meta.env.DEV || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  (isLocalDevelopment 
     ? 'http://localhost:3001/api' 
     : 'https://trustteams-backend.vercel.app/api')
 
@@ -14,7 +22,9 @@ console.log('API Configuration:', {
   DEV: import.meta.env.DEV,
   PROD: import.meta.env.PROD,
   HOSTNAME: window.location.hostname,
-  IS_LOCALHOST: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  PORT: window.location.port,
+  IS_LOCALHOST: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1',
+  IS_LOCAL_DEVELOPMENT: isLocalDevelopment
 })
 
 // API endpoints
