@@ -44,6 +44,7 @@ export const API_ENDPOINTS = {
   ACADEMIC_OPPORTUNITIES: (academicId) => `${API_BASE_URL}/academic/${academicId}/opportunities`,
   POST_OPPORTUNITY: `${API_BASE_URL}/opportunities`,
   DELETE_OPPORTUNITY: (id) => `${API_BASE_URL}/opportunities/${id}`,
+  ACADEMIC_PROFILE: `${API_BASE_URL}/academic/profile`,
   
   // Applications
   APPLICATIONS_FOR_OPPORTUNITY: (opportunityId) => `${API_BASE_URL}/applications/opportunity/${opportunityId}`,
@@ -86,7 +87,7 @@ export const API_ENDPOINTS = {
   ICM_DEBUG_USER: `${API_BASE_URL}/icm/debug/user`,
   ICM_HEALTH: `${API_BASE_URL}/icm/health`,
   ICM_OPPORTUNITY_APPLICATIONS: (opportunityId) => `${API_BASE_URL}/icm/opportunities/${opportunityId}/applications`,
-  ICM_UPDATE_APPLICATION_STATUS: (applicationId) => `${API_BASE_URL}/icm/applications/${applicationId}/status`,
+  ICM_UPDATE_APPLICATION_STATUS: (applicationId) => `${API_BASE_URL}/applications/${applicationId}/status`,
   ICM_STUDENT_PROFILE: (studentId) => `${API_BASE_URL}/icm/students/${studentId}/profile`,
   ICM_PROFILE: `${API_BASE_URL}/icm/profile`,
   
@@ -198,7 +199,8 @@ export const apiRequest = async (url, options = {}) => {
 
     if (!response.ok) {
       console.error('API Error:', { status: response.status, data })
-      throw new Error(data.message || `HTTP error! status: ${response.status}`)
+      // Backend returns error in data.error field, fallback to data.message or status
+      throw new Error(data.error || data.message || `HTTP error! status: ${response.status}`)
     }
 
     return data
@@ -300,6 +302,11 @@ export const api = {
   deleteOpportunity: (id) => apiRequest(API_ENDPOINTS.DELETE_OPPORTUNITY(id), {
     method: 'DELETE'
   }),
+  getAcademicProfile: () => apiRequest(API_ENDPOINTS.ACADEMIC_PROFILE),
+  updateAcademicProfile: (profileData) => apiRequest(API_ENDPOINTS.ACADEMIC_PROFILE, {
+    method: 'PUT',
+    body: JSON.stringify(profileData)
+  }),
 
   // Applications
   getApplicationsForOpportunity: (opportunityId) => apiRequest(API_ENDPOINTS.APPLICATIONS_FOR_OPPORTUNITY(opportunityId)),
@@ -355,7 +362,7 @@ export const api = {
   verifyEmail: (token) => apiRequest(API_ENDPOINTS.VERIFY_EMAIL(token), { method: 'GET' }),
   resendVerification: (email) => apiRequest(API_ENDPOINTS.RESEND_VERIFICATION, { method: 'POST', body: JSON.stringify({ email }) }),
 
-  // ICM API functions
+  // ICM API functions - using proper ICM endpoints
   getIcmUniversities: () => apiRequest(API_ENDPOINTS.ICM_UNIVERSITIES),
   getIcmUniversityDetails: (id) => apiRequest(API_ENDPOINTS.ICM_UNIVERSITY_DETAILS(id)),
   getIcmStats: () => apiRequest(API_ENDPOINTS.ICM_STATS),
@@ -365,13 +372,13 @@ export const api = {
     method: 'PUT',
     body: JSON.stringify(opportunityData)
   }),
-  deleteIcmOpportunity: (opportunityId) => apiRequest(API_ENDPOINTS.ICM_OPPORTUNITY(opportunityId), {
+  deleteIcmOpportunity: (opportunityId) => apiRequest(API_ENDPOINTS.DELETE_OPPORTUNITY(opportunityId), {
     method: 'DELETE'
   }),
   getIcmDebugUser: () => apiRequest(API_ENDPOINTS.ICM_DEBUG_USER),
   getIcmHealth: () => apiRequest(API_ENDPOINTS.ICM_HEALTH),
   getIcmOpportunityApplications: (opportunityId) => apiRequest(API_ENDPOINTS.ICM_OPPORTUNITY_APPLICATIONS(opportunityId)),
-  updateIcmApplicationStatus: (applicationId, status, reviewNotes) => apiRequest(API_ENDPOINTS.ICM_UPDATE_APPLICATION_STATUS(applicationId), {
+  updateIcmApplicationStatus: (applicationId, status, reviewNotes) => apiRequest(API_ENDPOINTS.UPDATE_APPLICATION_STATUS(applicationId), {
     method: 'PUT',
     body: JSON.stringify({ status, reviewNotes })
   }),
@@ -382,7 +389,9 @@ export const api = {
     body: JSON.stringify(profileData)
   }),
   searchIcmUniversities: (query) => {
-    const url = `${API_ENDPOINTS.ICM_SEARCH_UNIVERSITIES}?q=${encodeURIComponent(query)}`
+    const url = `${API_ENDPOINTS.UNIVERSITIES}?q=${encodeURIComponent(query)}`
     return apiRequest(url)
   }
 }
+
+

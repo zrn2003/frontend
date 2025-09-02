@@ -79,13 +79,23 @@ const IcmDashboard = () => {
         api.getIcmProfile()
       ]);
 
-      if (universitiesRes.success) setUniversities(universitiesRes.universities);
-      if (opportunitiesRes.success) setOpportunities(opportunitiesRes.opportunities);
-      if (statsRes.success) setStats(statsRes.stats);
-      if (profileRes.success) {
-        setIcmProfile(profileRes.profile);
-        setProfileFormData(profileRes.profile);
-      }
+      if (universitiesRes && Array.isArray(universitiesRes)) setUniversities(universitiesRes);
+      if (opportunitiesRes && Array.isArray(opportunitiesRes)) setOpportunities(opportunitiesRes);
+      if (statsRes && typeof statsRes === 'object') setStats(statsRes);
+             if (profileRes && typeof profileRes === 'object') {
+         setIcmProfile(profileRes);
+         // Initialize form data with basic fields and nested objects
+         setProfileFormData({
+           name: profileRes.name || '',
+           email: profileRes.email || '',
+           institute_name: profileRes.institute_name || '',
+           company: profileRes.company || {},
+           culture: profileRes.culture || {},
+           recruitment: profileRes.recruitment || {},
+           highlights: profileRes.highlights || {},
+           people: profileRes.people || {}
+         });
+       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -258,129 +268,167 @@ const IcmDashboard = () => {
 
   const handleViewApplications = async (opportunity) => {
     try {
-      console.log('Fetching applications for opportunity:', opportunity.id);
       setSelectedOpportunity(opportunity);
       setShowApplicationsModal(true);
       
       // Fetch applications for this opportunity
       const response = await api.getIcmOpportunityApplications(opportunity.id);
-      console.log('Applications response:', response);
       if (response.success) {
         setSelectedOpportunity({
           ...opportunity,
           applications: response.applications
         });
-        console.log('Updated selected opportunity with applications:', response.applications);
+      } else {
+        console.error('Failed to fetch applications:', response.message);
       }
     } catch (error) {
       console.error('Error fetching applications:', error);
-      showNotification('Failed to load applications. Please try again.', 'error');
     }
   };
 
-     const handleViewStudentProfile = async (studentId) => {
-     try {
-       setLoadingStudentProfile(true);
-       const response = await api.getIcmStudentProfile(studentId);
-       if (response.success) {
-         setStudentProfile(response.student);
-         setSelectedStudent(studentId);
-         setShowStudentProfileModal(true);
-       }
-     } catch (error) {
-       console.error('Failed to load student profile:', error);
-     } finally {
-       setLoadingStudentProfile(false);
-     }
-   };
+  const fetchStudentProfile = async (studentId) => {
+    try {
+      setLoadingStudentProfile(true);
+      const profileData = await api.getIcmStudentProfile(studentId);
+      if (profileData.success) {
+        setStudentProfile(profileData.student);
+        setShowStudentProfileModal(true);
+      } else {
+        console.error('Failed to fetch student profile:', profileData.message);
+      }
+    } catch (error) {
+      console.error('Error fetching student profile:', error);
+    } finally {
+      setLoadingStudentProfile(false);
+    }
+  };
 
-   const handleEditOpportunity = async (opportunity) => {
-     try {
-       setLoadingEditOpportunity(true);
-       const response = await api.getIcmOpportunity(opportunity.id);
-       if (response.success) {
-         setEditingOpportunity(response.opportunity);
-         setOpportunityForm({
-           title: response.opportunity.title,
-           type: response.opportunity.type,
-           description: response.opportunity.description,
-           requirements: response.opportunity.requirements,
-           stipend: response.opportunity.stipend,
-           duration: response.opportunity.duration,
-           location: response.opportunity.location,
-           contact_email: response.opportunity.contact_email,
-           contact_phone: response.opportunity.contact_phone,
-           closing_date: response.opportunity.closing_date,
-           degree: '',
-           yearOfStudy: '',
-           minGpa: '',
-           experience: '',
-           otherConditions: ''
-         });
-         setShowEditOpportunityModal(true);
-       }
-     } catch (error) {
-       console.error('Failed to load opportunity for editing:', error);
-     } finally {
-       setLoadingEditOpportunity(false);
-     }
-   };
+  const handleViewStudentProfile = (studentId) => {
+    fetchStudentProfile(studentId);
+  };
 
-   const handleUpdateOpportunity = async (e) => {
-     e.preventDefault();
-     try {
-       const response = await api.updateIcmOpportunity(editingOpportunity.id, opportunityForm);
-       if (response.success) {
-         setShowEditOpportunityModal(false);
-         setEditingOpportunity(null);
-         setOpportunityForm({
-           title: '',
-           type: 'internship',
-           description: '',
-           requirements: '',
-           stipend: '',
-           duration: '',
-           location: '',
-           contact_email: '',
-           contact_phone: '',
-           closing_date: '',
-           degree: '',
-           yearOfStudy: '',
-           minGpa: '',
-           experience: '',
-           otherConditions: ''
-         });
-         fetchDashboardData();
-         showNotification('Opportunity updated successfully!', 'success');
-       }
-     } catch (error) {
-       console.error('Error updating opportunity:', error);
-       showNotification('Failed to update opportunity. Please try again.', 'error');
-     }
-   };
+  const handleUpdateApplicationStatus = async (applicationId, status, reviewNotes = '') => {
+    try {
+      const response = await api.updateIcmApplicationStatus(applicationId, status, reviewNotes);
+      if (response.success) {
+        showNotification(`Application ${status} successfully!`, 'success');
+        // Refresh the applications data
+        if (selectedOpportunity) {
+          const applicationsResponse = await api.getIcmOpportunityApplications(selectedOpportunity.id);
+          if (applicationsResponse.success) {
+            setSelectedOpportunity({
+              ...selectedOpportunity,
+              applications: applicationsResponse.applications
+            });
+          }
+        }
+      } else {
+        showNotification(`Failed to ${status} application: ${response.message}`, 'error');
+      }
+    } catch (error) {
+      console.error(`Error updating application status to ${status}:`, error);
+      showNotification(`Failed to ${status} application. Please try again.`, 'error');
+    }
+  };
 
-   const handleDeleteOpportunity = (opportunity) => {
-     setDeletingOpportunity(opportunity);
-     setShowDeleteModal(true);
-   };
+  const handleApproveApplication = (applicationId) => {
+    const reviewNotes = prompt('Add review notes (optional):');
+    handleUpdateApplicationStatus(applicationId, 'approved', reviewNotes);
+  };
 
-   const confirmDeleteOpportunity = async () => {
-     try {
-       setLoadingDelete(true);
-       const response = await api.deleteIcmOpportunity(deletingOpportunity.id);
-       if (response.success) {
-         setShowDeleteModal(false);
-         setDeletingOpportunity(null);
-         fetchDashboardData();
-         showNotification('Opportunity deleted successfully!', 'success');
-       }
-     } catch (error) {
-       console.error('Error deleting opportunity:', error);
-       showNotification('Failed to delete opportunity. Please try again.', 'error');
-     } finally {
-       setLoadingDelete(false);
-     }
-   };
+  const handleRejectApplication = (applicationId) => {
+    const reviewNotes = prompt('Add review notes (optional):');
+    handleUpdateApplicationStatus(applicationId, 'rejected', reviewNotes);
+  };
+
+  const handleEditOpportunity = async (opportunity) => {
+    try {
+      setLoadingEditOpportunity(true);
+      const response = await api.getIcmOpportunity(opportunity.id);
+      if (response.success) {
+        setEditingOpportunity(response.opportunity);
+        setOpportunityForm({
+          title: response.opportunity.title,
+          type: response.opportunity.type,
+          description: response.opportunity.description,
+          requirements: response.opportunity.requirements,
+          stipend: response.opportunity.stipend,
+          duration: response.opportunity.duration,
+          location: response.opportunity.location,
+          contact_email: response.opportunity.contact_email,
+          contact_phone: response.opportunity.contact_phone,
+          closing_date: response.opportunity.closing_date,
+          degree: '',
+          yearOfStudy: '',
+          minGpa: '',
+          experience: '',
+          otherConditions: ''
+        });
+        setShowEditOpportunityModal(true);
+      }
+    } catch (error) {
+      console.error('Failed to load opportunity for editing:', error);
+    } finally {
+      setLoadingEditOpportunity(false);
+    }
+  };
+
+  const handleUpdateOpportunity = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await api.updateIcmOpportunity(editingOpportunity.id, opportunityForm);
+      if (response.success) {
+        setShowEditOpportunityModal(false);
+        setEditingOpportunity(null);
+        setOpportunityForm({
+          title: '',
+          type: 'internship',
+          description: '',
+          requirements: '',
+          stipend: '',
+          duration: '',
+          location: '',
+          contact_email: '',
+          contact_phone: '',
+          closing_date: '',
+          degree: '',
+          yearOfStudy: '',
+          minGpa: '',
+          experience: '',
+          otherConditions: ''
+        });
+        fetchDashboardData();
+        showNotification('Opportunity updated successfully!', 'success');
+      }
+    } catch (error) {
+      console.error('Error updating opportunity:', error);
+      showNotification('Failed to update opportunity. Please try again.', 'error');
+    }
+  };
+
+  const handleDeleteOpportunity = (opportunity) => {
+    setDeletingOpportunity(opportunity);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteOpportunity = async () => {
+    try {
+      setLoadingDelete(true);
+      const response = await api.deleteOpportunity(deletingOpportunity.id);
+      if (response.success) {
+        setShowDeleteModal(false);
+        setDeletingOpportunity(null);
+        fetchDashboardData();
+        showNotification('Opportunity deleted successfully!', 'success');
+      }
+    } catch (error) {
+      console.error('Error deleting opportunity:', error);
+      const errorMessage = error.message || 'Failed to delete opportunity. Please try again.';
+      showNotification(errorMessage, 'error');
+    } finally {
+      setLoadingDelete(false);
+    }
+  };
 
   const renderOverviewTab = () => (
     <div className="overview-tab">
@@ -674,18 +722,76 @@ const IcmDashboard = () => {
           </button>
         </div>
 
-        {/* Tab Content */}
-        <div className="profile-tab-content">
-                  {activeProfileTab === 'company' && (
-          <>
-            {renderCompanyInfoTab()}
-          </>
-        )}
-          {activeProfileTab === 'culture' && renderCultureTab()}
-          {activeProfileTab === 'recruitment' && renderRecruitmentTab()}
-          {activeProfileTab === 'highlights' && renderHighlightsTab()}
-          {activeProfileTab === 'people' && renderPeopleTab()}
-        </div>
+                 {/* Tab Content */}
+         <div className="profile-tab-content">
+           {/* Basic User Information Section - Always visible */}
+           <div className="basic-info-section">
+             <h3><i className="fas fa-user"></i> Basic Information</h3>
+             <div className="info-grid">
+               <div className="info-item">
+                 <label>Name *</label>
+                 {editingProfile ? (
+                   <input
+                     type="text"
+                     value={profileFormData.name || icmProfile?.name || ''}
+                     onChange={(e) => setProfileFormData({
+                       ...profileFormData,
+                       name: e.target.value
+                     })}
+                     placeholder="Enter your name"
+                     style={{ color: '#333', background: '#fff' }}
+                   />
+                 ) : (
+                   <span>{icmProfile?.name || 'Not specified'}</span>
+                 )}
+               </div>
+               <div className="info-item">
+                 <label>Email *</label>
+                 {editingProfile ? (
+                   <input
+                     type="email"
+                     value={profileFormData.email || icmProfile?.email || ''}
+                     onChange={(e) => setProfileFormData({
+                       ...profileFormData,
+                       email: e.target.value
+                     })}
+                     placeholder="Enter your email"
+                     style={{ color: '#333', background: '#fff' }}
+                   />
+                 ) : (
+                   <span>{icmProfile?.email || 'Not specified'}</span>
+                 )}
+               </div>
+               <div className="info-item">
+                 <label>Institute Name</label>
+                 {editingProfile ? (
+                   <input
+                     type="text"
+                     value={profileFormData.institute_name || icmProfile?.institute_name || ''}
+                     onChange={(e) => setProfileFormData({
+                       ...profileFormData,
+                       institute_name: e.target.value
+                     })}
+                     placeholder="Enter institute name"
+                     style={{ color: '#333', background: '#fff' }}
+                   />
+                 ) : (
+                   <span>{icmProfile?.institute_name || 'Not specified'}</span>
+                 )}
+               </div>
+             </div>
+           </div>
+           
+           {activeProfileTab === 'company' && (
+           <>
+             {renderCompanyInfoTab()}
+           </>
+         )}
+           {activeProfileTab === 'culture' && renderCultureTab()}
+           {activeProfileTab === 'recruitment' && renderRecruitmentTab()}
+           {activeProfileTab === 'highlights' && renderHighlightsTab()}
+           {activeProfileTab === 'people' && renderPeopleTab()}
+         </div>
       </div>
     </div>
   );
@@ -1417,30 +1523,56 @@ const IcmDashboard = () => {
 
   const handleCancelEdit = () => {
     setEditingProfile(false);
-    setProfileFormData(icmProfile);
+    // Reset form data to original profile data
+    setProfileFormData({
+      name: icmProfile?.name || '',
+      email: icmProfile?.email || '',
+      institute_name: icmProfile?.institute_name || '',
+      company: icmProfile?.company || {},
+      culture: icmProfile?.culture || {},
+      recruitment: icmProfile?.recruitment || {},
+      highlights: icmProfile?.highlights || {},
+      people: icmProfile?.people || {}
+    });
   };
 
   const handleSaveProfile = async () => {
     try {
       setProfileLoading(true);
       
-      // Structure the data correctly for the backend
+      // Send the complete profile data including all nested objects
       const updateData = {
-        company: profileFormData.company || {},
-        culture: profileFormData.culture || {},
-        recruitment: profileFormData.recruitment || {},
-        highlights: profileFormData.highlights || {},
-        people: profileFormData.people || {},
-        contact: profileFormData.contact || {},
-        bio: profileFormData.bio || ''
+        name: profileFormData.name || icmProfile?.name || '',
+        email: profileFormData.email || icmProfile?.email || '',
+        institute_name: profileFormData.institute_name || icmProfile?.institute_name || '',
+        company: profileFormData.company || icmProfile?.company || {},
+        culture: profileFormData.culture || icmProfile?.culture || {},
+        recruitment: profileFormData.recruitment || icmProfile?.recruitment || {},
+        highlights: profileFormData.highlights || icmProfile?.highlights || {},
+        people: profileFormData.people || icmProfile?.people || {}
       };
       
-      console.log('Sending profile update data:', updateData);
+      console.log('Sending complete profile update data:', updateData);
+      console.log('Current profileFormData:', profileFormData);
+      console.log('Current icmProfile:', icmProfile);
+      
+      // Validate that we have the required fields
+      if (!updateData.name || !updateData.email) {
+        showNotification('Name and email are required fields', 'error');
+        setProfileLoading(false);
+        return;
+      }
+      
       const response = await api.updateIcmProfile(updateData);
       console.log('Profile update response:', response);
       
-      if (response.success) {
-        setIcmProfile(profileFormData);
+      if (response && response.message) {
+        // Update the local profile with the new data
+        const updatedProfile = {
+          ...icmProfile,
+          ...updateData
+        };
+        setIcmProfile(updatedProfile);
         setEditingProfile(false);
         showNotification('Profile updated successfully');
       } else {
@@ -2230,8 +2362,26 @@ const IcmDashboard = () => {
                         >
                           View Full Profile
                         </button>
-                        <button className="btn btn-outline">Approve</button>
-                        <button className="btn btn-outline">Reject</button>
+                        {app.status === 'pending' ? (
+                          <>
+                            <button 
+                              className="btn btn-success" 
+                              onClick={() => handleApproveApplication(app.id)}
+                            >
+                              ✅ Approve
+                            </button>
+                            <button 
+                              className="btn btn-danger" 
+                              onClick={() => handleRejectApplication(app.id)}
+                            >
+                              ❌ Reject
+                            </button>
+                          </>
+                        ) : (
+                          <span className={`status-badge ${app.status}`}>
+                            {app.status === 'approved' ? '✅ Approved' : '❌ Rejected'}
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -2278,19 +2428,19 @@ const IcmDashboard = () => {
                     </div>
                     <div className="info-item">
                       <strong>Phone:</strong>
-                      <span>{studentProfile.contact?.phone || 'Not provided'}</span>
+                      <span>{studentProfile.phone || 'Not provided'}</span>
                     </div>
                     <div className="info-item">
                       <strong>Address:</strong>
-                      <span>{studentProfile.contact?.address || 'Not provided'}</span>
+                      <span>{studentProfile.address || 'Not provided'}</span>
+                    </div>
+                    <div className="info-item">
+                      <strong>Institute:</strong>
+                      <span>{studentProfile.institute_name || 'Not specified'}</span>
                     </div>
                     <div className="info-item">
                       <strong>Joined:</strong>
-                      <span>{new Date(studentProfile.joinedDate).toLocaleDateString()}</span>
-                    </div>
-                    <div className="info-item">
-                      <strong>Last Login:</strong>
-                      <span>{studentProfile.lastLogin ? new Date(studentProfile.lastLogin).toLocaleDateString() : 'Never'}</span>
+                      <span>{new Date(studentProfile.created_at).toLocaleDateString()}</span>
                     </div>
                   </div>
                   
@@ -2302,36 +2452,7 @@ const IcmDashboard = () => {
                   )}
                 </div>
 
-                {/* Academic Information */}
-                <div className="profile-section">
-                  <h4><span>🎓</span> Academic Information</h4>
-                  <div className="info-grid">
-                    <div className="info-item">
-                      <strong>University:</strong>
-                      <span>{studentProfile.academic?.university?.name || 'Not specified'}</span>
-                    </div>
-                    <div className="info-item">
-                      <strong>Institute:</strong>
-                      <span>{studentProfile.academic?.institute || 'Not specified'}</span>
-                    </div>
-                    <div className="info-item">
-                      <strong>Department:</strong>
-                      <span>{studentProfile.academic?.department || 'Not specified'}</span>
-                    </div>
-                    <div className="info-item">
-                      <strong>Field of Study:</strong>
-                      <span>{studentProfile.academic?.fieldOfStudy || 'Not specified'}</span>
-                    </div>
-                    <div className="info-item">
-                      <strong>Highest Degree:</strong>
-                      <span>{studentProfile.academic?.highestDegree || 'Not specified'}</span>
-                    </div>
-                    <div className="info-item">
-                      <strong>Years Experience:</strong>
-                      <span>{studentProfile.academic?.yearsExperience || '0'}</span>
-                    </div>
-                  </div>
-                </div>
+
 
                 {/* Skills */}
                 {studentProfile.skills && studentProfile.skills.length > 0 && (
@@ -2444,6 +2565,12 @@ const IcmDashboard = () => {
                             <div className="application-cover-letter">
                               <h6>Cover Letter:</h6>
                               <p>{app.cover_letter}</p>
+                            </div>
+                          )}
+                          {app.review_notes && (
+                            <div className="application-review-notes">
+                              <h6>Review Notes:</h6>
+                              <p>{app.review_notes}</p>
                             </div>
                           )}
                         </div>

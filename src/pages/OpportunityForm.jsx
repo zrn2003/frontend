@@ -75,15 +75,17 @@ export default function OpportunityForm({ mode = 'create' }) {
       if (mode === 'edit') {
         await api.updateOpportunity(id, payload)
       } else {
-        await api.createOpportunity(payload)
+        console.log('Creating opportunity with payload:', payload)
+        const result = await api.createOpportunity(payload)
+        console.log('Opportunity creation result:', result)
       }
       
       setSuccess(mode === 'edit' ? 'Opportunity updated successfully!' : 'Opportunity posted successfully!')
       
-      // Redirect to dashboard after a short delay to show success message
+      // Redirect to dashboard after a longer delay to show success message
       setTimeout(() => {
         window.location.href = '/icm'
-      }, 1500)
+      }, 3000)
       
     } catch (e) {
       setError(e.message || 'Something went wrong')

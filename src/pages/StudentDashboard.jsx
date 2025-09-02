@@ -11,7 +11,19 @@ const currentMonth = () => {
 };
 
 const emptyExperience = { company: '', title: '', location: '', employmentType: '', start: currentMonth(), end: '', current: true, description: '' };
-const emptyEducation = { school: '', degree: '', field: '', location: '', grade: '', start: currentMonth(), end: currentMonth(), current: false, description: '' };
+const emptyEducation = { 
+  educationType: '', 
+  school: '', 
+  degree: '', 
+  field: '', 
+  location: '', 
+  board: '', 
+  grade: '', 
+  start: currentMonth(), 
+  end: currentMonth(), 
+  current: false, 
+  description: '' 
+};
 const emptyProject = { name: '', role: '', description: '', tech: [], link: '', start: currentMonth(), end: '', current: false };
 
 const StudentDashboard = () => {
@@ -58,34 +70,9 @@ const StudentDashboard = () => {
   const [savedEntryKey, setSavedEntryKey] = useState('');
   
   // Application state
-  const [selectedOpportunity, setSelectedOpportunity] = useState(null)
-  const [showApplicationForm, setShowApplicationForm] = useState(false)
-  const [applicationStep, setApplicationStep] = useState(1)
-  const [applicationForm, setApplicationForm] = useState({
-    opportunityId: '',
-    // Step 1 - Personal Information
-    fullName: '',
-    email: '',
-    phone: '',
-    location: '',
-    linkedinUrl: '',
-    githubUrl: '',
-    // Step 2 - Education
-    degree: '',
-    yearOfStudy: '',
-    cgpa: '',
-    university: '',
-    // Step 3 - Skills & Experience
-    skills: '',
-    resumeFile: null,
-    experience: '',
-    coverLetter: '',
-    // Step 4 - Confirmation
-    confirmInfo: false
-  })
-  const [applicationProgress, setApplicationProgress] = useState(25)
-  const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoadingApplied, setIsLoadingApplied] = useState(false);
+  const [appliedOpportunities, setAppliedOpportunities] = useState([]);
 
   useEffect(() => {
     const rawUser = localStorage.getItem('userData') || localStorage.getItem('user');
@@ -103,6 +90,7 @@ const StudentDashboard = () => {
     setUser(parsed);
     fetchOpportunities(true);
     fetchProfile();
+    fetchAppliedOpportunities();
     // Seed dynamic notifications/messages (could be fetched from API later)
     const savedNotifs = JSON.parse(localStorage.getItem('tt_notifications') || '[]');
     const savedMsgs = JSON.parse(localStorage.getItem('tt_messages') || '[]');
@@ -234,6 +222,85 @@ const StudentDashboard = () => {
     return { valid: true };
   };
 
+  const validateEducationEntry = (ed) => {
+    if (!ed.educationType) return { valid: false, message: 'Education type is required' };
+    if (!ed.school) return { valid: false, message: 'School/University is required' };
+    
+    // Degree/Course is optional for 10th standard, required for others
+    if (ed.educationType !== '10th' && !ed.degree) {
+      return { valid: false, message: 'Degree/Course is required' };
+    }
+    
+    // Additional validation based on education type
+    if (ed.educationType === '10th' || ed.educationType === '12th') {
+      if (!ed.board) return { valid: false, message: 'Board is required for school education' };
+    }
+    
+    return { valid: true };
+  };
+
+  // Check if student has completed mandatory education (10th, 12th/diploma, graduation)
+  const checkMandatoryEducation = () => {
+    const education = portfolio.education || [];
+    
+    // Check for 10th standard
+    const has10th = education.some(ed => ed.educationType === '10th' && ed.school && ed.board);
+    if (!has10th) {
+      return { valid: false, message: 'Please add your 10th standard education details' };
+    }
+    
+    // Check for 12th standard or diploma
+    const has12thOrDiploma = education.some(ed => 
+      (ed.educationType === '12th' || ed.educationType === 'diploma') && 
+      ed.school && ed.board && ed.degree
+    );
+    if (!has12thOrDiploma) {
+      return { valid: false, message: 'Please add your 12th standard or diploma education details' };
+    }
+    
+    // Check for graduation
+    const hasGraduation = education.some(ed => 
+      ed.educationType === 'graduation' && 
+      ed.school && ed.degree && ed.field
+    );
+    if (!hasGraduation) {
+      return { valid: false, message: 'Please add your graduation education details' };
+    }
+    
+    return { valid: true, message: 'All mandatory education details completed' };
+  };
+
+  // Get expected graduation date from profile
+  const getExpectedGraduationFromProfile = () => {
+    const graduation = portfolio.education?.find(ed => ed.educationType === 'graduation');
+    if (graduation && graduation.end) {
+      return graduation.end;
+    }
+    // If no end date, estimate based on current date
+    const currentYear = new Date().getFullYear();
+    return `${currentYear + 1}-05-15`;
+  };
+
+  // Get relevant courses from profile
+  const getRelevantCoursesFromProfile = () => {
+    const graduation = portfolio.education?.find(ed => ed.educationType === 'graduation');
+    if (graduation) {
+      return `${graduation.degree} in ${graduation.field || 'General'}`;
+    }
+    return 'Not specified';
+  };
+
+  // Get experience summary from profile
+  const getExperienceSummaryFromProfile = () => {
+    const experiences = portfolio.experiences || [];
+    if (experiences.length === 0) {
+      return 'No work experience yet';
+    }
+    
+    const latestExp = experiences[0];
+    return `${latestExp.title} at ${latestExp.company} - ${latestExp.description || 'Experience in the field'}`;
+  };
+
   const applySkillUpdatesFromActivity = (payload) => {
     const derived = new Set(portfolio.skills || []);
     if (payload?.requirements) {
@@ -331,6 +398,22 @@ const StudentDashboard = () => {
       });
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const fetchAppliedOpportunities = async () => {
+    try {
+      setIsLoadingApplied(true);
+      const userData = JSON.parse(localStorage.getItem('userData') || localStorage.getItem('user') || '{}');
+      if (userData.id) {
+        const data = await api.getStudentApplications(userData.id);
+        setAppliedOpportunities(data.applications || []);
+      }
+    } catch (error) {
+      console.error('Error fetching applied opportunities:', error);
+      setAppliedOpportunities([]);
+    } finally {
+      setIsLoadingApplied(false);
     }
   };
 
@@ -442,34 +525,57 @@ const StudentDashboard = () => {
       return;
     }
 
-    // Show application form modal
-    setSelectedOpportunity(opp);
-    setApplicationForm({
-      opportunityId: oppId,
-      // Step 1 - Personal Information
-      fullName: userData.name || '',
-      email: userData.email || '',
-      phone: '',
-      location: '',
-      linkedinUrl: '',
-      githubUrl: '',
-      // Step 2 - Education
-      degree: '',
-      yearOfStudy: '',
-      cgpa: '',
-      university: '',
-      // Step 3 - Skills & Experience
-      skills: '',
-      resumeFile: null,
-      experience: '',
-      coverLetter: '',
-      // Step 4 - Confirmation
-      confirmInfo: false
-    });
-    setApplicationStep(1);
-    setApplicationProgress(25);
-    setShowApplicationForm(true);
-    console.log('Application form modal should now be visible');
+    // Check if student has completed mandatory education details
+    const hasMandatoryEducation = checkMandatoryEducation();
+    if (!hasMandatoryEducation.valid) {
+      alert(`Please complete your education profile first: ${hasMandatoryEducation.message}`);
+      setActiveTab('portfolio');
+      setProfileTab('education');
+      return;
+    }
+
+    // Apply directly to opportunity
+    try {
+      setIsSubmitting(true);
+      
+      // Prepare application data from student's profile
+      const applicationData = {
+        opportunityId: oppId,
+        coverLetter: `I am interested in this ${opp.type} opportunity at ${opp.postedByName || 'this organization'}. I believe my skills and education background make me a suitable candidate for this position.`,
+        gpa: null, // Will be extracted from education if available
+        expectedGraduation: getExpectedGraduationFromProfile(),
+        relevantCourses: getRelevantCoursesFromProfile(),
+        skills: (portfolio.skills || []).join(', '),
+        experienceSummary: getExperienceSummaryFromProfile()
+      };
+
+      await api.applyToOpportunity(applicationData);
+      
+      // Log activity
+      logActivity('opportunity.apply', { 
+        id: oppId, 
+        text: `${opp.title} ${opp.description || ''}`, 
+        requirements: opp.requirements || [] 
+      });
+
+      alert('Successfully applied to the opportunity!');
+      
+    } catch (error) {
+      console.error('Application error:', error);
+      
+      // Show user-friendly error messages
+      if (error.message.includes('Already applied')) {
+        alert('You have already applied to this opportunity. Please try applying to a different one.\n\nTip: Look for opportunities you haven\'t applied to yet.');
+      } else if (error.message.includes('not open')) {
+        alert('This opportunity is no longer open for applications.');
+      } else if (error.message.includes('deadline has passed')) {
+        alert('The application deadline for this opportunity has passed.');
+      } else {
+        alert('Failed to apply: ' + error.message);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSaveOpportunity = async (oppId) => {
@@ -482,153 +588,7 @@ const StudentDashboard = () => {
     }
   };
 
-  // Application form helper functions
-  const nextStep = () => {
-    if (applicationStep < 4) {
-      setApplicationStep(applicationStep + 1);
-      setApplicationProgress((applicationStep + 1) * 25);
-    }
-  };
 
-  const prevStep = () => {
-    if (applicationStep > 1) {
-      setApplicationStep(applicationStep - 1);
-      setApplicationProgress((applicationStep - 1) * 25);
-    }
-  };
-
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Validate file type
-      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-      if (!allowedTypes.includes(file.type)) {
-        alert('Please upload a PDF or Word document');
-        return;
-      }
-      // Validate file size (5MB limit)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('File size should be less than 5MB');
-        return;
-      }
-      setApplicationForm(prev => ({ ...prev, resumeFile: file }));
-    }
-  };
-
-  const validateStep = (step) => {
-    switch (step) {
-      case 1:
-        return applicationForm.fullName && applicationForm.email && applicationForm.phone;
-      case 2:
-        return applicationForm.degree && applicationForm.university;
-      case 3:
-        return applicationForm.coverLetter;
-      case 4:
-        return applicationForm.confirmInfo;
-      default:
-        return false;
-    }
-  };
-
-  const submitApplication = async () => {
-    try {
-      setIsSubmitting(true);
-      const userData = JSON.parse(localStorage.getItem('userData'));
-      if (!userData || !userData.id) {
-        alert('Please log in to apply for opportunities');
-        return;
-      }
-
-      // Convert year of study to expected graduation date
-      const getExpectedGraduationDate = (yearOfStudy) => {
-        const currentYear = new Date().getFullYear();
-        const currentMonth = new Date().getMonth(); // 0-11
-        
-        switch (yearOfStudy) {
-          case '1st Year':
-            return `${currentYear + 3}-05-15`; // 3 years from now
-          case '2nd Year':
-            return `${currentYear + 2}-05-15`; // 2 years from now
-          case '3rd Year':
-            return `${currentYear + 1}-05-15`; // 1 year from now
-          case 'Final Year':
-            return `${currentYear + 1}-05-15`; // Next year
-          case 'Graduated':
-            return `${currentYear}-01-01`; // This year
-          default:
-            return `${currentYear + 1}-05-15`; // Default to next year
-        }
-      };
-
-      // Validate and format GPA
-      const formatGPA = (gpa) => {
-        if (!gpa) return null;
-        const numGPA = parseFloat(gpa);
-        if (isNaN(numGPA) || numGPA < 0 || numGPA > 4) {
-          return null; // Return null for invalid GPA
-        }
-        return numGPA.toFixed(2); // Format to 2 decimal places
-      };
-
-      // Prepare application data
-      const applicationData = {
-        opportunityId: applicationForm.opportunityId,
-        coverLetter: applicationForm.coverLetter,
-        gpa: formatGPA(applicationForm.cgpa),
-        expectedGraduation: getExpectedGraduationDate(applicationForm.yearOfStudy),
-        relevantCourses: applicationForm.degree,
-        skills: applicationForm.skills,
-        experienceSummary: applicationForm.experience
-      };
-
-      await api.applyToOpportunity(applicationData);
-      
-      // Log activity
-      const opp = opportunities.find(o => o.id === applicationForm.opportunityId);
-      if (opp) {
-        logActivity('opportunity.apply', { 
-          id: applicationForm.opportunityId, 
-          text: `${opp.title} ${opp.description || ''}`, 
-          requirements: opp.requirements || [] 
-        });
-      }
-
-      // Reset form and show success
-      setApplicationForm({
-        opportunityId: '',
-        fullName: '',
-        email: '',
-        phone: '',
-        location: '',
-        linkedinUrl: '',
-        githubUrl: '',
-        degree: '',
-        yearOfStudy: '',
-        cgpa: '',
-        university: '',
-        skills: '',
-        resumeFile: null,
-        experience: '',
-        coverLetter: '',
-        confirmInfo: false
-      });
-      setApplicationStep(1);
-      setApplicationProgress(25);
-      setShowApplicationForm(false);
-      setShowSuccessModal(true);
-      
-    } catch (error) {
-      alert('Failed to submit application: ' + error.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const closeSuccessModal = () => {
-    setShowSuccessModal(false);
-    setSelectedOpportunity(null);
-    setActiveTab('opportunities');
-  };
 
   const computeSkillCounts = () => {
     const counts = {};
@@ -841,6 +801,87 @@ const StudentDashboard = () => {
     </div>
   );
 
+  const renderAppliedOpportunitiesTab = () => (
+    <div className="tab-content fade-in" data-state={isLoadingApplied ? 'loading' : (appliedOpportunities.length === 0 ? 'empty' : 'ready')}>
+      <div className="applied-opportunities-header">
+        <h3>My Applied Opportunities</h3>
+        <p>Track your applications and their status.</p>
+      </div>
+      {isLoadingApplied ? (
+        <div className="loading-container" role="status" aria-live="polite">
+          <div className="skeleton skeleton-title" />
+          <div className="skeleton skeleton-row" />
+          <div className="skeleton skeleton-row" />
+          <div className="skeleton skeleton-row" />
+        </div>
+      ) : appliedOpportunities.length === 0 ? (
+        <div className="no-applied-opportunities">
+          <div className="no-data-icon">📝</div>
+          <h3>No opportunities applied to yet</h3>
+          <p>Apply to opportunities to see their status here.</p>
+        </div>
+      ) : (
+        <div className="applied-opportunities-grid">
+          {appliedOpportunities.map(application => (
+            <div key={application.id} className="applied-opportunity-card">
+              <div className="opp-header">
+                <h4>{application.opportunity_title}</h4>
+                <div className="opp-badges">
+                  <span className={`badge status ${application.status}`} aria-label="Application Status">
+                    {application.status}
+                  </span>
+                </div>
+              </div>
+              <div className="opp-meta">
+                <div className="company-avatar" aria-hidden>{(application.posted_by_name || 'T').charAt(0)}</div>
+                <p className="opp-company">{application.posted_by_name || 'TrustTeams partner'}</p>
+              </div>
+              <div className="opp-details">
+                <span>📅 Applied on: {new Date(application.application_date).toLocaleDateString()}</span>
+                <span>🏷️ Type: {application.opportunity_type}</span>
+                <span>📍 Location: {application.opportunity_location || 'N/A'}</span>
+                {application.opportunity_stipend && <span>💰 Stipend: {application.opportunity_stipend}</span>}
+                {application.opportunity_duration && <span>⏱️ Duration: {application.opportunity_duration}</span>}
+                <span>📌 Status: {application.status}</span>
+              </div>
+              {application.cover_letter && (
+                <div className="cover-letter-preview">
+                  <strong>Cover Letter Preview:</strong>
+                  <p>{application.cover_letter.length > 150 ? 
+                    `${application.cover_letter.substring(0, 150)}...` : 
+                    application.cover_letter
+                  }</p>
+                </div>
+              )}
+              {application.review_notes && (
+                <div className="review-notes">
+                  <strong>Review Notes:</strong>
+                  <p>{application.review_notes}</p>
+                </div>
+              )}
+              <div className="opp-actions">
+                <button 
+                  className="btn btn-primary" 
+                  onClick={() => alert(`Application ID: ${application.id}\nOpportunity: ${application.opportunity_title}\nStatus: ${application.status}`)}
+                >
+                  View Details
+                </button>
+                {application.status === 'pending' && (
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={() => alert('Withdraw functionality coming soon!')}
+                  >
+                    Withdraw
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   const renderProfileHeader = () => {
     const initials = (user?.name || 'Student')
       .split(' ')
@@ -982,22 +1023,61 @@ const StudentDashboard = () => {
                     <div className="timeline-content">
                       <div className="form-row grid-2">
                         <label>
-                          <span className="mini-label">School / University <span className="required">*</span></span>
-                          <input className="form-input" placeholder="e.g., IIT Bombay" value={ed.school} onChange={(e)=>updateItem('education', i, { school: e.target.value })} />
+                          <span className="mini-label">Education Type <span className="required">*</span></span>
+                          <select 
+                            className="form-input" 
+                            value={ed.educationType || ''} 
+                            onChange={(e)=>updateItem('education', i, { educationType: e.target.value })}
+                          >
+                            <option value="">Select Education Type</option>
+                            <option value="10th">10th Standard</option>
+                            <option value="12th">12th Standard</option>
+                            <option value="diploma">Diploma</option>
+                            <option value="graduation">Graduation (Bachelor's)</option>
+                            <option value="other">Other</option>
+                          </select>
+                          {ed.educationType && (
+                            <small className="field-hint">
+                              {ed.educationType === '10th' && 'For 10th standard/Secondary School Certificate. Course field is optional.'}
+                              {ed.educationType === '12th' && 'For 12th standard/Higher Secondary Certificate'}
+                              {ed.educationType === 'diploma' && 'For Diploma courses (Polytechnic, ITI, etc.)'}
+                              {ed.educationType === 'graduation' && 'For Bachelor\'s degree programs'}
+                              {ed.educationType === 'other' && 'For other educational qualifications'}
+                            </small>
+                          )}
+                          {(() => { const v = validateEducationEntry(ed); return !v.valid ? (<div className="field-error">{v.message}</div>) : null; })()}
                         </label>
                         <label>
-                          <span className="mini-label">Location</span>
-                          <input className="form-input" placeholder="City, Country" value={ed.location || ''} onChange={(e)=>updateItem('education', i, { location: e.target.value })} />
+                          <span className="mini-label">School / University <span className="required">*</span></span>
+                          <input className="form-input" placeholder="e.g., IIT Bombay" value={ed.school} onChange={(e)=>updateItem('education', i, { school: e.target.value })} />
                         </label>
                       </div>
                       <div className="form-row grid-2">
                         <label>
-                          <span className="mini-label">Degree <span className="required">*</span></span>
-                          <input className="form-input" placeholder="e.g., B.Tech" value={ed.degree} onChange={(e)=>updateItem('education', i, { degree: e.target.value })} />
+                          <span className="mini-label">Location</span>
+                          <input className="form-input" placeholder="City, Country" value={ed.location || ''} onChange={(e)=>updateItem('education', i, { location: e.target.value })} />
+                        </label>
+                        <label>
+                          <span className="mini-label">Board / University</span>
+                          <input className="form-input" placeholder="e.g., CBSE, State Board, University Name" value={ed.board || ''} onChange={(e)=>updateItem('education', i, { board: e.target.value })} />
+                        </label>
+                      </div>
+                      <div className="form-row grid-2">
+                        <label>
+                          <span className="mini-label">
+                            Degree / Course 
+                            {ed.educationType !== '10th' && <span className="required">*</span>}
+                          </span>
+                          <input 
+                            className="form-input" 
+                            placeholder={ed.educationType === '10th' ? "e.g., Secondary School Certificate (optional)" : "e.g., B.Tech, Science, Commerce"} 
+                            value={ed.degree} 
+                            onChange={(e)=>updateItem('education', i, { degree: e.target.value })} 
+                          />
                         </label>
                         <label>
                           <span className="mini-label">Field of Study</span>
-                          <input className="form-input" placeholder="e.g., Computer Science" value={ed.field} onChange={(e)=>updateItem('education', i, { field: e.target.value })} />
+                          <input className="form-input" placeholder="e.g., Computer Science, PCM, PCB" value={ed.field} onChange={(e)=>updateItem('education', i, { field: e.target.value })} />
                         </label>
                       </div>
                       <div className="grid-2">
@@ -1017,8 +1097,8 @@ const StudentDashboard = () => {
                       </label>
                       <div className="form-row grid-2">
                         <label>
-                          <span className="mini-label">Grade / GPA</span>
-                          <input className="form-input" placeholder="e.g., 8.5 CGPA" value={ed.grade || ''} onChange={(e)=>updateItem('education', i, { grade: e.target.value })} />
+                          <span className="mini-label">Grade / GPA / Percentage</span>
+                          <input className="form-input" placeholder="e.g., 8.5 CGPA, 85%, A+, First Class" value={ed.grade || ''} onChange={(e)=>updateItem('education', i, { grade: e.target.value })} />
                         </label>
                         <label>
                           <span className="mini-label">Description</span>
@@ -1026,7 +1106,7 @@ const StudentDashboard = () => {
                         </label>
                       </div>
                       <div className="row-actions" style={{ gap: 8 }}>
-                        <button className="btn btn-primary" disabled={!validateDateRange(ed.start, ed.end, ed.current).valid || savingEntryKey===`education-${i}`} onClick={()=>saveEntry('education', i)}>
+                        <button className="btn btn-primary" disabled={!validateDateRange(ed.start, ed.end, ed.current).valid || !validateEducationEntry(ed).valid || savingEntryKey===`education-${i}`} onClick={()=>saveEntry('education', i)}>
                           {savingEntryKey===`education-${i}` ? 'Saving...' : (savedEntryKey===`education-${i}` ? 'Saved' : 'Save')}
                         </button>
                         <button className="btn btn-secondary" onClick={()=>removeItem('education', i)}>Remove</button>
@@ -1329,6 +1409,15 @@ const StudentDashboard = () => {
           </a>
 
           <a 
+            href="#applied"
+            className={`nav-menu-item ${activeTab === 'applied' ? 'active' : ''}`}
+            onClick={() => setActiveTab('applied')}
+          >
+            <span className="nav-menu-item-icon applied"></span>
+            <span className="nav-menu-item-text">Applied</span>
+          </a>
+
+          <a 
             href="#portfolio"
             className={`nav-menu-item ${activeTab === 'portfolio' ? 'active' : ''}`}
             onClick={() => setActiveTab('portfolio')}
@@ -1399,7 +1488,7 @@ const StudentDashboard = () => {
               <div className="greet-avatar">{(user?.name || 'S').charAt(0).toUpperCase()}</div>
               <div>
                 <h1>Welcome back{user?.name ? `, ${user.name.split(' ')[0]}` : ''}</h1>
-                <p>Here’s what’s happening with your opportunities and growth.</p>
+                <p>Here's what's happening with your opportunities and growth.</p>
               </div>
             </div>
           </div>
@@ -1462,385 +1551,12 @@ const StudentDashboard = () => {
         {/* Dashboard Content */}
         <div className="dashboard-content">
         {activeTab === 'opportunities' && renderOpportunitiesTab()}
+        {activeTab === 'applied' && renderAppliedOpportunitiesTab()}
         {activeTab === 'portfolio' && renderPortfolioTab()}
         {activeTab === 'mentors' && renderMentorsTab()}
         {activeTab === 'credentials' && renderCredentialsTab()}
         {activeTab === 'activity' && renderActivityTab()}
       </div>
-
-      {/* Multi-Step Application Form Modal */}
-      {showApplicationForm && selectedOpportunity && (
-        <div className="modal-overlay">
-          <div className="application-form-modal">
-            {/* Header with Progress */}
-            <div className="modal-header">
-              <div className="header-content">
-                <h3>Apply for: {selectedOpportunity.title}</h3>
-                <div className="progress-indicator">
-                  <div className="progress-bar">
-                    <div className="progress-fill" style={{ width: `${applicationProgress}%` }}></div>
-                  </div>
-                  <span className="progress-text">Step {applicationStep} of 4</span>
-                </div>
-              </div>
-              <button 
-                className="close-modal-btn"
-                onClick={() => {
-                  setShowApplicationForm(false)
-                  setSelectedOpportunity(null)
-                  setApplicationForm({
-                    opportunityId: '',
-                    fullName: '',
-                    email: '',
-                    phone: '',
-                    location: '',
-                    linkedinUrl: '',
-                    githubUrl: '',
-                    degree: '',
-                    yearOfStudy: '',
-                    cgpa: '',
-                    university: '',
-                    skills: '',
-                    resumeFile: null,
-                    experience: '',
-                    coverLetter: '',
-                    confirmInfo: false
-                  })
-                  setApplicationStep(1)
-                  setApplicationProgress(25)
-                }}
-              >
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-
-            <div className="modal-content">
-              {/* Opportunity Overview Card */}
-              <div className="opportunity-overview">
-                <div className="overview-card">
-                  <div className="overview-header">
-                    <h4>{selectedOpportunity.title}</h4>
-                    <span className="opportunity-type">{selectedOpportunity.type}</span>
-                  </div>
-                  <div className="overview-details">
-                    <div className="detail-item">
-                      <span className="detail-icon">📍</span>
-                      <span>{selectedOpportunity.location || 'Remote'}</span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="detail-icon">💰</span>
-                      <span>{selectedOpportunity.stipend || 'Not specified'}</span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="detail-icon">⏱️</span>
-                      <span>{selectedOpportunity.duration || 'Not specified'}</span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="detail-icon">📅</span>
-                      <span>Deadline: {selectedOpportunity.closingDate ? new Date(selectedOpportunity.closingDate).toLocaleDateString() : 'Not specified'}</span>
-                    </div>
-                  </div>
-                  {selectedOpportunity.requirements && (
-                    <div className="overview-requirements">
-                      <strong>Requirements:</strong>
-                      <p>{selectedOpportunity.requirements}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Multi-Step Form */}
-              <div className="application-steps">
-                {/* Step 1: Personal Information */}
-                {applicationStep === 1 && (
-                  <div className="form-step">
-                    <div className="step-header">
-                      <h4>Step 1: Personal Information</h4>
-                      <p>Please provide your basic contact information</p>
-                    </div>
-                    <div className="form-grid">
-                      <div className="form-group">
-                        <label>Full Name *</label>
-                        <input
-                          type="text"
-                          value={applicationForm.fullName}
-                          onChange={(e) => {
-                            console.log('Full name input changed:', e.target.value);
-                            setApplicationForm(prev => ({ ...prev, fullName: e.target.value }));
-                          }}
-                          placeholder="Enter your full name"
-                          required
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Email Address *</label>
-                        <input
-                          type="email"
-                          value={applicationForm.email}
-                          onChange={(e) => setApplicationForm(prev => ({ ...prev, email: e.target.value }))}
-                          placeholder="Enter your email"
-                          required
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Phone Number *</label>
-                        <input
-                          type="tel"
-                          value={applicationForm.phone}
-                          onChange={(e) => setApplicationForm(prev => ({ ...prev, phone: e.target.value }))}
-                          placeholder="Enter your phone number"
-                          required
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Current Location</label>
-                        <input
-                          type="text"
-                          value={applicationForm.location}
-                          onChange={(e) => setApplicationForm(prev => ({ ...prev, location: e.target.value }))}
-                          placeholder="City, Country"
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>LinkedIn Profile</label>
-                        <input
-                          type="url"
-                          value={applicationForm.linkedinUrl}
-                          onChange={(e) => setApplicationForm(prev => ({ ...prev, linkedinUrl: e.target.value }))}
-                          placeholder="https://linkedin.com/in/yourprofile"
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>GitHub Profile</label>
-                        <input
-                          type="url"
-                          value={applicationForm.githubUrl}
-                          onChange={(e) => setApplicationForm(prev => ({ ...prev, githubUrl: e.target.value }))}
-                          placeholder="https://github.com/yourusername"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 2: Education */}
-                {applicationStep === 2 && (
-                  <div className="form-step">
-                    <div className="step-header">
-                      <h4>Step 2: Education & Background</h4>
-                      <p>Tell us about your academic background</p>
-                    </div>
-                    <div className="form-grid">
-                      <div className="form-group">
-                        <label>Degree/Course *</label>
-                        <input
-                          type="text"
-                          value={applicationForm.degree}
-                          onChange={(e) => setApplicationForm(prev => ({ ...prev, degree: e.target.value }))}
-                          placeholder="e.g., B.Tech Computer Science"
-                          required
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>University/College *</label>
-                        <input
-                          type="text"
-                          value={applicationForm.university}
-                          onChange={(e) => setApplicationForm(prev => ({ ...prev, university: e.target.value }))}
-                          placeholder="Enter your university name"
-                          required
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Year of Study</label>
-                        <select
-                          value={applicationForm.yearOfStudy}
-                          onChange={(e) => setApplicationForm(prev => ({ ...prev, yearOfStudy: e.target.value }))}
-                        >
-                          <option value="">Select year</option>
-                          <option value="1st Year">1st Year</option>
-                          <option value="2nd Year">2nd Year</option>
-                          <option value="3rd Year">3rd Year</option>
-                          <option value="Final Year">Final Year</option>
-                          <option value="Graduated">Graduated</option>
-                        </select>
-                      </div>
-                      <div className="form-group">
-                        <label>CGPA/Percentage</label>
-                        <input
-                          type="text"
-                          value={applicationForm.cgpa}
-                          onChange={(e) => setApplicationForm(prev => ({ ...prev, cgpa: e.target.value }))}
-                          placeholder="e.g., 8.5 CGPA or 85%"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 3: Skills & Experience */}
-                {applicationStep === 3 && (
-                  <div className="form-step">
-                    <div className="step-header">
-                      <h4>Step 3: Skills & Experience</h4>
-                      <p>Showcase your skills and relevant experience</p>
-                    </div>
-                    <div className="form-group">
-                      <label>Skills</label>
-                      <textarea
-                        value={applicationForm.skills}
-                        onChange={(e) => setApplicationForm(prev => ({ ...prev, skills: e.target.value }))}
-                        placeholder="List your relevant skills (e.g., Python, React, Machine Learning, Git)"
-                        rows="3"
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Resume Upload</label>
-                      <div className="file-upload-area">
-                        <input
-                          type="file"
-                          accept=".pdf,.doc,.docx"
-                          onChange={handleFileUpload}
-                          id="resume-upload"
-                          style={{ display: 'none' }}
-                        />
-                        <label htmlFor="resume-upload" className="file-upload-label">
-                          <div className="upload-icon">📄</div>
-                          <div className="upload-text">
-                            {applicationForm.resumeFile ? (
-                              <span className="file-name">{applicationForm.resumeFile.name}</span>
-                            ) : (
-                              <>
-                                <span>Click to upload resume</span>
-                                <small>PDF or Word document (max 5MB)</small>
-                              </>
-                            )}
-                          </div>
-                        </label>
-                      </div>
-                    </div>
-                    <div className="form-group">
-                      <label>Experience Summary</label>
-                      <textarea
-                        value={applicationForm.experience}
-                        onChange={(e) => setApplicationForm(prev => ({ ...prev, experience: e.target.value }))}
-                        placeholder="Describe your relevant experience, internships, projects, or work experience"
-                        rows="4"
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Cover Letter *</label>
-                      <textarea
-                        value={applicationForm.coverLetter}
-                        onChange={(e) => setApplicationForm(prev => ({ ...prev, coverLetter: e.target.value }))}
-                        placeholder="Write a cover letter explaining why you're interested in this opportunity and why you're a good fit..."
-                        rows="6"
-                        required
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 4: Confirmation */}
-                {applicationStep === 4 && (
-                  <div className="form-step">
-                    <div className="step-header">
-                      <h4>Step 4: Review & Confirm</h4>
-                      <p>Please review your application before submitting</p>
-                    </div>
-                    <div className="application-preview">
-                      <div className="preview-section">
-                        <h5>Personal Information</h5>
-                        <p><strong>Name:</strong> {applicationForm.fullName}</p>
-                        <p><strong>Email:</strong> {applicationForm.email}</p>
-                        <p><strong>Phone:</strong> {applicationForm.phone}</p>
-                        <p><strong>Location:</strong> {applicationForm.location || 'Not provided'}</p>
-                      </div>
-                      <div className="preview-section">
-                        <h5>Education</h5>
-                        <p><strong>Degree:</strong> {applicationForm.degree}</p>
-                        <p><strong>University:</strong> {applicationForm.university}</p>
-                        <p><strong>Year:</strong> {applicationForm.yearOfStudy || 'Not specified'}</p>
-                        <p><strong>CGPA:</strong> {applicationForm.cgpa || 'Not specified'}</p>
-                      </div>
-                      <div className="preview-section">
-                        <h5>Skills & Experience</h5>
-                        <p><strong>Skills:</strong> {applicationForm.skills || 'Not provided'}</p>
-                        <p><strong>Resume:</strong> {applicationForm.resumeFile ? applicationForm.resumeFile.name : 'Not uploaded'}</p>
-                        <p><strong>Experience:</strong> {applicationForm.experience || 'Not provided'}</p>
-                      </div>
-                      <div className="preview-section">
-                        <h5>Cover Letter</h5>
-                        <p>{applicationForm.coverLetter}</p>
-                      </div>
-                    </div>
-                    <div className="form-group">
-                      <label className="checkbox-label">
-                        <input
-                          type="checkbox"
-                          checked={applicationForm.confirmInfo}
-                          onChange={(e) => setApplicationForm(prev => ({ ...prev, confirmInfo: e.target.checked }))}
-                          required
-                        />
-                        <span>I confirm that the information provided is correct and complete</span>
-                      </label>
-                    </div>
-                  </div>
-                )}
-
-                {/* Navigation Buttons */}
-                <div className="step-navigation">
-                  {applicationStep > 1 && (
-                    <button type="button" className="btn btn-secondary" onClick={prevStep}>
-                      ← Previous
-                    </button>
-                  )}
-                  {applicationStep < 4 ? (
-                    <button 
-                      type="button" 
-                      className="btn btn-primary" 
-                      onClick={nextStep}
-                      disabled={!validateStep(applicationStep)}
-                    >
-                      Next →
-                    </button>
-                  ) : (
-                    <button 
-                      type="button" 
-                      className="btn btn-primary" 
-                      onClick={submitApplication}
-                      disabled={!validateStep(applicationStep) || isSubmitting}
-                    >
-                      {isSubmitting ? 'Submitting...' : 'Submit Application'}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Success Modal */}
-      {showSuccessModal && (
-        <div className="modal-overlay">
-          <div className="success-modal">
-            <div className="success-content">
-              <div className="success-icon">✅</div>
-              <h3>Application Submitted Successfully!</h3>
-              <p>Your application has been submitted and is under review. You will receive updates via email.</p>
-              <div className="success-actions">
-                <button className="btn btn-primary" onClick={closeSuccessModal}>
-                  View My Applications
-                </button>
-                <button className="btn btn-secondary" onClick={() => setShowSuccessModal(false)}>
-                  Continue Browsing
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
       </main>
     </div>
   );

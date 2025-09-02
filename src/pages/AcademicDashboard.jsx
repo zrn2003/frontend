@@ -3,6 +3,18 @@ import { api } from '../config/api.js'
 import './AcademicDashboard.css'
 
 export default function AcademicDashboard() {
+  // Utility function to safely access form fields with fallbacks
+  const getFormField = (field, defaultValue = '') => {
+    const value = opportunityForm[field]
+    if (value === undefined || value === null) {
+      console.log(`Field '${field}' is undefined/null, using default:`, defaultValue)
+    }
+    if (field === 'skills' || field === 'uploadedFiles') {
+      return value || []
+    }
+    return value || defaultValue
+  }
+
   const [activeTab, setActiveTab] = useState('profile')
   const [isDarkTheme, setIsDarkTheme] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -69,11 +81,52 @@ export default function AcademicDashboard() {
   // Fetch academic leader's own profile
   const fetchUserProfile = async () => {
     try {
-      const userData = JSON.parse(localStorage.getItem('userData'))
-      if (userData && userData.id) {
-        const profileData = await api.getUserProfile(userData.id)
-        setUserProfile(profileData)
-        setEditedProfile(profileData)
+      const profileData = await api.getAcademicProfile()
+      if (profileData.success && profileData.profile) {
+        const profile = profileData.profile
+        
+        // Transform backend data structure to frontend format
+        const transformedProfile = {
+          ...profile,
+          // Extract education data from array to individual fields
+          highest_degree: profile.education && profile.education.length > 0 ? profile.education[0].degree : '',
+          field_of_study: profile.education && profile.education.length > 0 ? profile.education[0].field_of_study : '',
+          institution: profile.education && profile.education.length > 0 ? profile.education[0].institution : '',
+          completion_year: profile.education && profile.education.length > 0 && profile.education[0].end_date ? 
+            new Date(profile.education[0].end_date).getFullYear() : '',
+          grade: profile.education && profile.education.length > 0 ? profile.education[0].grade : '',
+          education_description: profile.education && profile.education.length > 0 ? profile.education[0].description : '',
+          
+          // Extract project data from array to individual fields
+          project_name: profile.projects && profile.projects.length > 0 ? profile.projects[0].project_name : '',
+          project_description: profile.projects && profile.projects.length > 0 ? profile.projects[0].description : '',
+          technologies_used: profile.projects && profile.projects.length > 0 ? profile.projects[0].technologies_used : '',
+          project_start_date: profile.projects && profile.projects.length > 0 ? profile.projects[0].start_date : '',
+          project_end_date: profile.projects && profile.projects.length > 0 ? profile.projects[0].end_date : '',
+          project_is_current: profile.projects && profile.projects.length > 0 ? profile.projects[0].is_current : false,
+          project_url: profile.projects && profile.projects.length > 0 ? profile.projects[0].project_url : '',
+          github_url: profile.projects && profile.projects.length > 0 ? profile.projects[0].github_url : '',
+          project_achievements: profile.projects && profile.projects.length > 0 ? profile.projects[0].achievements : '',
+          
+          // Extract skills data from array to individual fields
+          skills: profile.skills ? profile.skills.map(skill => skill.skill_name) : [],
+          
+          // Extract experience data from array to individual fields
+          title: profile.experience && profile.experience.length > 0 ? profile.experience[0].title : '',
+          company: profile.experience && profile.experience.length > 0 ? profile.experience[0].company : '',
+          location: profile.experience && profile.experience.length > 0 ? profile.experience[0].location : '',
+          experience_start_date: profile.experience && profile.experience.length > 0 ? profile.experience[0].start_date : '',
+          experience_end_date: profile.experience && profile.experience.length > 0 ? profile.experience[0].end_date : '',
+          experience_is_current: profile.experience && profile.experience.length > 0 ? profile.experience[0].is_current : false,
+          experience_description: profile.experience && profile.experience.length > 0 ? profile.experience[0].description : '',
+          experience_achievements: profile.experience && profile.experience.length > 0 ? profile.experience[0].achievements : ''
+        }
+        
+        console.log('📥 Received profile data:', profile)
+        console.log('🔄 Transformed to frontend format:', transformedProfile)
+        
+        setUserProfile(transformedProfile)
+        setEditedProfile(transformedProfile)
       }
     } catch (e) {
       console.error('Failed to fetch user profile:', e)
@@ -83,13 +136,84 @@ export default function AcademicDashboard() {
   // Save profile changes
   const handleProfileSave = async () => {
     try {
-      const userData = JSON.parse(localStorage.getItem('userData'))
-      if (userData && userData.id) {
-        await api.updateUserProfile(userData.id, editedProfile)
-        setUserProfile(editedProfile)
-        setIsEditingProfile(false)
-        alert('Profile updated successfully!')
+      // Helper function to format dates to YYYY-MM-DD
+      const formatDateForDB = (dateString) => {
+        if (!dateString) return null;
+        try {
+          const date = new Date(dateString);
+          if (isNaN(date.getTime())) return null;
+          return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD
+        } catch (e) {
+          console.warn('Invalid date string:', dateString);
+          return null;
+        }
+      };
+
+      // Transform the frontend data structure to match backend expectations
+      const transformedProfile = {
+        // Basic profile fields
+        name: editedProfile.name || '',
+        email: editedProfile.email || '',
+        institute_name: editedProfile.institute_name || '',
+        phone: editedProfile.phone || '',
+        address: editedProfile.address || '',
+        position: editedProfile.position || '',
+        department: editedProfile.department || '',
+        bio: editedProfile.bio || '',
+        
+        // Transform individual fields to arrays for backend
+        education: editedProfile.highest_degree || editedProfile.field_of_study || editedProfile.institution ? [{
+          degree: editedProfile.highest_degree || '',
+          institution: editedProfile.institution || '',
+          field_of_study: editedProfile.field_of_study || '',
+          start_date: editedProfile.completion_year ? `${editedProfile.completion_year - 4}-09-01` : null,
+          end_date: editedProfile.completion_year ? `${editedProfile.completion_year}-06-01` : null,
+          grade: editedProfile.grade || '',
+          description: editedProfile.education_description || '',
+          is_current: false
+        }] : [],
+        
+        projects: editedProfile.project_name || editedProfile.project_description ? [{
+          project_name: editedProfile.project_name || 'Academic Project',
+          project_type: 'academic',
+          description: editedProfile.project_description || '',
+          technologies_used: editedProfile.technologies_used || '',
+          start_date: formatDateForDB(editedProfile.project_start_date),
+          end_date: formatDateForDB(editedProfile.project_end_date),
+          is_current: editedProfile.project_is_current || false,
+          project_url: editedProfile.project_url || '',
+          github_url: editedProfile.github_url || '',
+          achievements: editedProfile.project_achievements || ''
+        }] : [],
+        
+        skills: editedProfile.skills ? (Array.isArray(editedProfile.skills) ? editedProfile.skills.map(skill => ({
+          skill_name: skill,
+          skill_category: 'technical',
+          proficiency_level: 'intermediate',
+          years_of_experience: editedProfile.years_experience || null,
+          description: `Skill in ${skill}`
+        })) : []) : [],
+        
+        experience: editedProfile.title || editedProfile.company || editedProfile.experience_description ? [{
+          title: editedProfile.title || editedProfile.position || '',
+          company: editedProfile.company || editedProfile.institute_name || '',
+          location: editedProfile.location || '',
+          start_date: formatDateForDB(editedProfile.experience_start_date),
+          end_date: formatDateForDB(editedProfile.experience_end_date),
+          is_current: editedProfile.experience_is_current || false,
+          description: editedProfile.experience_description || '',
+          achievements: editedProfile.experience_achievements || ''
+        }] : []
       }
+      
+      console.log('🔄 Sending transformed profile data:', transformedProfile)
+      
+      await api.updateAcademicProfile(transformedProfile)
+      setUserProfile(editedProfile)
+      setIsEditingProfile(false)
+      alert('Profile updated successfully!')
+      // Refresh the profile data
+      fetchUserProfile()
     } catch (e) {
       alert('Failed to update profile: ' + e.message)
     }
@@ -110,10 +234,10 @@ export default function AcademicDashboard() {
 
   // Skills management functions
   const addSkill = (skill) => {
-    if (skill.trim() && !opportunityForm.skills.includes(skill.trim())) {
+    if (skill.trim() && !getFormField('skills').includes(skill.trim())) {
       setOpportunityForm({
         ...opportunityForm,
-        skills: [...opportunityForm.skills, skill.trim()]
+        skills: [...getFormField('skills'), skill.trim()]
       })
     }
   }
@@ -121,7 +245,7 @@ export default function AcademicDashboard() {
   const removeSkill = (skillToRemove) => {
     setOpportunityForm({
       ...opportunityForm,
-      skills: opportunityForm.skills.filter(skill => skill !== skillToRemove)
+      skills: getFormField('skills').filter(skill => skill !== skillToRemove)
     })
   }
 
@@ -138,14 +262,14 @@ export default function AcademicDashboard() {
     const files = Array.from(e.target.files)
     setOpportunityForm({
       ...opportunityForm,
-      uploadedFiles: [...opportunityForm.uploadedFiles, ...files]
+      uploadedFiles: [...getFormField('uploadedFiles'), ...files]
     })
   }
 
   const removeFile = (index) => {
     setOpportunityForm({
       ...opportunityForm,
-      uploadedFiles: opportunityForm.uploadedFiles.filter((_, i) => i !== index)
+      uploadedFiles: getFormField('uploadedFiles').filter((_, i) => i !== index)
     })
   }
 
@@ -153,12 +277,12 @@ export default function AcademicDashboard() {
   const validateForm = () => {
     const errors = {}
     
-    if (!opportunityForm.title.trim()) errors.title = 'Title is required'
-    if (!opportunityForm.description.trim()) errors.description = 'Description is required'
-    if (!opportunityForm.closing_date) errors.closing_date = 'Deadline is required'
+    if (!getFormField('title').trim()) errors.title = 'Title is required'
+    if (!getFormField('description').trim()) errors.description = 'Description is required'
+    if (!getFormField('closing_date')) errors.closing_date = 'Deadline is required'
     
     // Check if deadline is in the future
-    if (opportunityForm.closing_date && new Date(opportunityForm.closing_date) <= new Date()) {
+    if (getFormField('closing_date') && new Date(getFormField('closing_date')) <= new Date()) {
       errors.closing_date = 'Deadline must be in the future'
     }
     
@@ -194,7 +318,7 @@ export default function AcademicDashboard() {
   // Autosave every 30 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      if (opportunityForm.title || opportunityForm.description) {
+      if (getFormField('title') || getFormField('description')) {
         saveDraft()
       }
     }, 30000)
@@ -246,7 +370,7 @@ export default function AcademicDashboard() {
       // Prepare form data with skills as comma-separated string
       const formData = {
         ...opportunityForm,
-        requirements: opportunityForm.skills.join(', ') + (opportunityForm.requirements ? `, ${opportunityForm.requirements}` : ''),
+        requirements: getFormField('skills').join(', ') + (opportunityForm.requirements ? `, ${opportunityForm.requirements}` : ''),
         academic_leader_id: userData.id,
         university_id: userData.university_id
       }
@@ -319,10 +443,32 @@ export default function AcademicDashboard() {
 
   // Edit opportunity
   const handleEditOpportunity = (opportunity) => {
-    setOpportunityForm({
+    console.log('Editing opportunity:', opportunity)
+    const formData = {
       ...opportunity,
-      deadline: opportunity.deadline || opportunity.closingDate || ''
-    })
+      // Ensure all required fields are present with fallbacks
+      skills: opportunity.skills || [],
+      degree: opportunity.degree || '',
+      yearOfStudy: opportunity.yearOfStudy || '',
+      minGpa: opportunity.minGpa || '',
+      experience: opportunity.experience || '',
+      otherConditions: opportunity.otherConditions || '',
+      uploadedFiles: opportunity.uploadedFiles || [],
+      // Handle date field mapping
+      closing_date: opportunity.closing_date || opportunity.deadline || opportunity.closingDate || '',
+      // Ensure other fields have fallbacks
+      title: opportunity.title || '',
+      description: opportunity.description || '',
+      type: opportunity.type || 'internship',
+      requirements: opportunity.requirements || '',
+      stipend: opportunity.stipend || '',
+      duration: opportunity.duration || '',
+      location: opportunity.location || '',
+      contact_email: opportunity.contact_email || '',
+      contact_phone: opportunity.contact_phone || ''
+    }
+    console.log('Setting form data:', formData)
+    setOpportunityForm(formData)
     setShowOpportunityForm(true)
   }
 
@@ -341,14 +487,21 @@ export default function AcademicDashboard() {
         setOpportunityForm({
           title: '',
           description: '',
-          type: 'research_paper',
+          type: 'internship',
           requirements: '',
-          deadline: '',
           stipend: '',
-          location: '',
           duration: '',
+          location: '',
           contact_email: '',
-          contact_phone: ''
+          contact_phone: '',
+          closing_date: '',
+          degree: '',
+          yearOfStudy: '',
+          minGpa: '',
+          experience: '',
+          otherConditions: '',
+          skills: [],
+          uploadedFiles: []
         })
         setShowOpportunityForm(false)
         
@@ -403,6 +556,45 @@ export default function AcademicDashboard() {
       alert('Failed to update application status: ' + e.message)
     }
   }
+
+  // Quick approve/reject functions
+  const handleQuickApprove = async (applicationId) => {
+    const reviewNotes = prompt('Add review notes (optional):');
+    try {
+      await api.updateApplicationStatus(applicationId, {
+        status: 'approved',
+        reviewNotes: reviewNotes || ''
+      });
+      
+      // Refresh applications
+      if (selectedOpportunity) {
+        await fetchApplications(selectedOpportunity.id);
+      }
+      
+      alert('Application approved successfully!');
+    } catch (e) {
+      alert('Failed to approve application: ' + e.message);
+    }
+  };
+
+  const handleQuickReject = async (applicationId) => {
+    const reviewNotes = prompt('Add review notes (optional):');
+    try {
+      await api.updateApplicationStatus(applicationId, {
+        status: 'rejected',
+        reviewNotes: reviewNotes || ''
+      });
+      
+      // Refresh applications
+      if (selectedOpportunity) {
+        await fetchApplications(selectedOpportunity.id);
+      }
+      
+      alert('Application rejected successfully!');
+    } catch (e) {
+      alert('Failed to reject application: ' + e.message);
+    }
+  };
 
   // View application details
   const handleViewApplication = (application) => {
@@ -741,6 +933,34 @@ export default function AcademicDashboard() {
                             <span className="info-value">{userProfile.completion_year || 'Not specified'}</span>
                           )}
                         </div>
+                        <div className="info-item">
+                          <label>Grade</label>
+                          {isEditingProfile ? (
+                            <input
+                              type="text"
+                              value={editedProfile.grade || ''}
+                              onChange={(e) => handleProfileFieldChange('grade', e.target.value)}
+                              placeholder="e.g., 9.2 CGPA, 85%"
+                              className="modern-input"
+                            />
+                          ) : (
+                            <span className="info-value">{userProfile.grade || 'Not specified'}</span>
+                          )}
+                        </div>
+                        <div className="info-item">
+                          <label>Description</label>
+                          {isEditingProfile ? (
+                            <textarea
+                              value={editedProfile.education_description || ''}
+                              onChange={(e) => handleProfileFieldChange('education_description', e.target.value)}
+                              placeholder="Describe your education experience"
+                              rows="3"
+                              className="modern-textarea"
+                            />
+                          ) : (
+                            <span className="info-value">{userProfile.education_description || 'No description'}</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -808,6 +1028,76 @@ export default function AcademicDashboard() {
                       </div>
                       <div className="card-content">
                         <div className="info-item">
+                          <label>Project Name</label>
+                          {isEditingProfile ? (
+                            <input
+                              type="text"
+                              value={editedProfile.project_name || ''}
+                              onChange={(e) => handleProfileFieldChange('project_name', e.target.value)}
+                              placeholder="e.g., AI Education Platform"
+                              className="modern-input"
+                            />
+                          ) : (
+                            <span className="info-value">{userProfile.project_name || 'Not specified'}</span>
+                          )}
+                        </div>
+                        <div className="info-item">
+                          <label>Project Description</label>
+                          {isEditingProfile ? (
+                            <textarea
+                              value={editedProfile.project_description || ''}
+                              onChange={(e) => handleProfileFieldChange('project_description', e.target.value)}
+                              placeholder="Describe your project"
+                              rows="3"
+                              className="modern-textarea"
+                            />
+                          ) : (
+                            <span className="info-value">{userProfile.project_description || 'No description'}</span>
+                          )}
+                        </div>
+                        <div className="info-item">
+                          <label>Technologies Used</label>
+                          {isEditingProfile ? (
+                            <input
+                              type="text"
+                              value={editedProfile.technologies_used || ''}
+                              onChange={(e) => handleProfileFieldChange('technologies_used', e.target.value)}
+                              placeholder="e.g., Python, React, Node.js"
+                              className="modern-input"
+                            />
+                          ) : (
+                            <span className="info-value">{userProfile.technologies_used || 'Not specified'}</span>
+                          )}
+                        </div>
+                        <div className="info-item">
+                          <label>Project URL</label>
+                          {isEditingProfile ? (
+                            <input
+                              type="url"
+                              value={editedProfile.project_url || ''}
+                              onChange={(e) => handleProfileFieldChange('project_url', e.target.value)}
+                              placeholder="https://project-url.com"
+                              className="modern-input"
+                            />
+                          ) : (
+                            <span className="info-value">{userProfile.project_url || 'No URL'}</span>
+                          )}
+                        </div>
+                        <div className="info-item">
+                          <label>GitHub URL</label>
+                          {isEditingProfile ? (
+                            <input
+                              type="url"
+                              value={editedProfile.github_url || ''}
+                              onChange={(e) => handleProfileFieldChange('github_url', e.target.value)}
+                              placeholder="https://github.com/username/repo"
+                              className="modern-input"
+                            />
+                          ) : (
+                            <span className="info-value">{userProfile.github_url || 'No GitHub URL'}</span>
+                          )}
+                        </div>
+                        <div className="info-item">
                           <label>Projects Completed</label>
                           {isEditingProfile ? (
                             <input
@@ -848,6 +1138,140 @@ export default function AcademicDashboard() {
                             />
                           ) : (
                             <span className="info-value">{userProfile.project_experience || 'No project experience listed'}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Skills */}
+                    <div className="profile-card-modern">
+                      <div className="card-header">
+                        <i className="fas fa-tools"></i>
+                        <h3>Skills & Expertise</h3>
+                      </div>
+                      <div className="card-content">
+                        <div className="info-item">
+                          <label>Skills</label>
+                          {isEditingProfile ? (
+                            <div>
+                              <input
+                                type="text"
+                                placeholder="Add a skill and press Enter"
+                                onKeyPress={(e) => {
+                                  if (e.key === 'Enter' && e.target.value.trim()) {
+                                    const newSkill = e.target.value.trim()
+                                    if (!editedProfile.skills?.includes(newSkill)) {
+                                      handleProfileFieldChange('skills', [...(editedProfile.skills || []), newSkill])
+                                    }
+                                    e.target.value = ''
+                                  }
+                                }}
+                                className="modern-input"
+                              />
+                              <div className="skills-list">
+                                {editedProfile.skills?.map((skill, index) => (
+                                  <span key={index} className="skill-tag">
+                                    {skill}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const updatedSkills = editedProfile.skills.filter((_, i) => i !== index)
+                                        handleProfileFieldChange('skills', updatedSkills)
+                                      }}
+                                      className="remove-skill"
+                                    >
+                                      ×
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="skills-list">
+                              {userProfile.skills?.map((skill, index) => (
+                                <span key={index} className="skill-tag">{skill}</span>
+                              )) || <span className="info-value">No skills listed</span>}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Work Experience */}
+                    <div className="profile-card-modern">
+                      <div className="card-header">
+                        <i className="fas fa-briefcase"></i>
+                        <h3>Work Experience</h3>
+                      </div>
+                      <div className="card-content">
+                        <div className="info-item">
+                          <label>Job Title</label>
+                          {isEditingProfile ? (
+                            <input
+                              type="text"
+                              value={editedProfile.title || ''}
+                              onChange={(e) => handleProfileFieldChange('title', e.target.value)}
+                              placeholder="e.g., Senior Professor, HOD"
+                              className="modern-input"
+                            />
+                          ) : (
+                            <span className="info-value">{userProfile.title || 'Not specified'}</span>
+                          )}
+                        </div>
+                        <div className="info-item">
+                          <label>Company/Institution</label>
+                          {isEditingProfile ? (
+                            <input
+                              type="text"
+                              value={editedProfile.company || ''}
+                              onChange={(e) => handleProfileFieldChange('company', e.target.value)}
+                              placeholder="Company or institution name"
+                              className="modern-input"
+                            />
+                          ) : (
+                            <span className="info-value">{userProfile.company || 'Not specified'}</span>
+                          )}
+                        </div>
+                        <div className="info-item">
+                          <label>Location</label>
+                          {isEditingProfile ? (
+                            <input
+                              type="text"
+                              value={editedProfile.location || ''}
+                              onChange={(e) => handleProfileFieldChange('location', e.target.value)}
+                              placeholder="City, State, Country"
+                              className="modern-input"
+                            />
+                          ) : (
+                            <span className="info-value">{userProfile.location || 'Not specified'}</span>
+                          )}
+                        </div>
+                        <div className="info-item">
+                          <label>Experience Description</label>
+                          {isEditingProfile ? (
+                            <textarea
+                              value={editedProfile.experience_description || ''}
+                              onChange={(e) => handleProfileFieldChange('experience_description', e.target.value)}
+                              placeholder="Describe your role and responsibilities"
+                              rows="3"
+                              className="modern-textarea"
+                            />
+                          ) : (
+                            <span className="info-value">{userProfile.experience_description || 'No description'}</span>
+                          )}
+                        </div>
+                        <div className="info-item">
+                          <label>Achievements</label>
+                          {isEditingProfile ? (
+                            <textarea
+                              value={editedProfile.experience_achievements || ''}
+                              onChange={(e) => handleProfileFieldChange('experience_achievements', e.target.value)}
+                              placeholder="List your key achievements"
+                              rows="3"
+                              className="modern-textarea"
+                            />
+                          ) : (
+                            <span className="info-value">{userProfile.experience_achievements || 'No achievements listed'}</span>
                           )}
                         </div>
                       </div>
@@ -1192,7 +1616,7 @@ export default function AcademicDashboard() {
                             onKeyPress={handleSkillInput}
                           />
                           <div className="skills-tags">
-                            {opportunityForm.skills.map((skill, index) => (
+                            {getFormField('skills').map((skill, index) => (
                               <span key={index} className="skill-tag">
                                 {skill}
                                 <button type="button" onClick={() => removeSkill(skill)}>×</button>
@@ -1512,6 +1936,26 @@ export default function AcademicDashboard() {
                             <i className="fas fa-eye"></i>
                             View Full Profile
                           </button>
+                          {application.status === 'pending' ? (
+                            <>
+                              <button 
+                                className="btn btn-success" 
+                                onClick={() => handleQuickApprove(application.id)}
+                              >
+                                ✅ Approve
+                              </button>
+                              <button 
+                                className="btn btn-danger" 
+                                onClick={() => handleQuickReject(application.id)}
+                              >
+                                ❌ Reject
+                              </button>
+                            </>
+                          ) : (
+                            <span className={`status-badge ${application.status}`}>
+                              {application.status === 'approved' ? '✅ Approved' : '❌ Rejected'}
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))}
