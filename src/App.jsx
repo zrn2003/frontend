@@ -26,7 +26,7 @@ function App() {
           <Route path="/login" element={<LoginForm onSubmit={(creds)=>console.log('submit', creds)} />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/pending-approval" element={<PendingApproval />} />
-          <Route path="/verify-email" element={<EmailVerification />} />
+          <Route path="/verify-email/:token" element={<EmailVerification />} />
           
           {/* Protected role-based routes */}
           <Route path="/student" element={

@@ -142,7 +142,7 @@ export default function Signup() {
         role: mappedRole
       };
 
-      // Add university data for university admin role only
+      // Add university data for university admin role
       if (role === 'university') {
         if (universityMode === "select") {
           signupData.university_id = parseInt(university_id);
@@ -156,6 +156,9 @@ export default function Signup() {
           signupData.university_established_year = university_established_year ? parseInt(university_established_year) : null;
         }
       }
+      
+             // Students and academic leaders don't need university data during signup
+       // They can set this later in their profile
 
       const response = await api.signup(signupData);
       
@@ -211,7 +214,7 @@ export default function Signup() {
       <main className="form-panel">
         <div className="login-card">
           <h2 className="login-title">Create your account</h2>
-          <p className="login-subtitle">Students and academic leaders can sign up with just name, email, and password!</p>
+                     <p className="login-subtitle">Students and academic leaders can sign up with just name, email, and password! University details can be added later in your profile.</p>
 
           <form onSubmit={handleSubmit} className="form">
             {/* Role Selection */}
@@ -232,50 +235,50 @@ export default function Signup() {
               <input type="email" placeholder="you@institute.edu" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </label>
 
-            {/* University Selection - Only for University Admin */}
-            {requiresUniversity && (
-              <>
-                {role === 'university' && (
-                  <div className="field">
-                    <span>University Registration Mode</span>
-                    <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-                      <button
-                        type="button"
-                        onClick={() => setUniversityMode("select")}
-                        style={{
-                          padding: '8px 16px',
-                          border: universityMode === "select" ? '2px solid #3b82f6' : '1px solid #e2e8f0',
-                          borderRadius: '6px',
-                          backgroundColor: universityMode === "select" ? '#3b82f6' : 'white',
-                          color: universityMode === "select" ? 'white' : '#374151',
-                          cursor: 'pointer',
-                          fontSize: '14px'
-                        }}
-                      >
-                        Select Existing University
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setUniversityMode("create")}
-                        style={{
-                          padding: '8px 16px',
-                          border: universityMode === "create" ? '2px solid #3b82f6' : '1px solid #e2e8f0',
-                          borderRadius: '6px',
-                          backgroundColor: universityMode === "create" ? '#3b82f6' : 'white',
-                          color: universityMode === "create" ? 'white' : '#374151',
-                          cursor: 'pointer',
-                          fontSize: '14px'
-                        }}
-                      >
-                        Create New University
-                      </button>
-                    </div>
-                  </div>
-                )}
+                         {/* No university fields for Students and Academic Leaders - they can set this later in their profile */}
 
-                {(universityMode === "select" || role !== 'university') ? (
+            {/* University Selection - Optional for Students/Academic Leaders, Required for University Admin */}
+            {role === 'university' && (
+              <>
+                <div className="field">
+                  <span>University Registration Mode</span>
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setUniversityMode("select")}
+                      style={{
+                        padding: '8px 16px',
+                        border: universityMode === "select" ? '2px solid #3b82f6' : '1px solid #e2e8f0',
+                        borderRadius: '6px',
+                        backgroundColor: universityMode === "select" ? '#3b82f6' : 'white',
+                        color: universityMode === "select" ? 'white' : '#374151',
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                    >
+                      Select Existing University
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUniversityMode("create")}
+                      style={{
+                        padding: '8px 16px',
+                        border: universityMode === "create" ? '2px solid #3b82f6' : '1px solid #e2e8f0',
+                        borderRadius: '6px',
+                        backgroundColor: universityMode === "create" ? '#3b82f6' : 'white',
+                        color: universityMode === "create" ? 'white' : '#374151',
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                    >
+                      Create New University
+                    </button>
+                  </div>
+                </div>
+
+                {(universityMode === "select") ? (
                   <label className="field">
-                    <span>University</span>
+                    <span>University *</span>
                     <select 
                       value={university_id} 
                       onChange={(e) => setUniversityId(e.target.value)}
@@ -298,7 +301,7 @@ export default function Signup() {
                       ))}
                     </select>
                   </label>
-                ) : role === 'university' && (
+                ) : (
                   <div className="university-creation-fields">
                     <label className="field">
                       <span>University Name *</span>

@@ -1,12 +1,24 @@
-// 🚨 PERMANENT SOLUTION - DO NOT CHANGE THIS LINE 🚨
-// This will ALWAYS use production API on Vercel, NEVER localhost
-const API_BASE_URL = 'https://trustteams-backend.vercel.app/api'
+// 🚨 SMART API CONFIGURATION - DO NOT CHANGE THIS SECTION 🚨
+// This automatically detects environment and uses the correct backend
 
-// 🚨 SIMPLE DEBUG LOGGING - DO NOT CHANGE THIS SECTION 🚨
-console.log('🚨 PERMANENT SOLUTION:', {
+       // Check if we're running locally
+       const isLocalDevelopment = window.location.hostname === 'localhost' || 
+                                 window.location.hostname === '127.0.0.1' ||
+                                 window.location.port === '5173' ||
+                                 window.location.port === '3000'
+       
+               // Use local backend for development, production backend for Vercel
+        const API_BASE_URL = isLocalDevelopment 
+          ? 'http://localhost:3001/api'                    // LOCAL DEVELOPMENT (correct port)
+          : 'https://trustteams-backend.vercel.app/api'    // PRODUCTION
+
+// 🚨 SMART DEBUG LOGGING - DO NOT CHANGE THIS SECTION 🚨
+console.log('🚨 SMART API CONFIGURATION:', {
   API_BASE_URL,
   HOSTNAME: window.location.hostname,
-  MESSAGE: 'This will NEVER connect to localhost - PERMANENT FIX!'
+  PORT: window.location.port,
+  IS_LOCAL_DEVELOPMENT: isLocalDevelopment,
+  MESSAGE: isLocalDevelopment ? 'Using LOCAL backend' : 'Using PRODUCTION backend'
 })
 
 // API endpoints
