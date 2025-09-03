@@ -46,6 +46,10 @@ export default function LoginForm({ onSubmit }) {
       if (userType === 'university' && backendRole !== 'university_admin') {
         throw new Error('This account is not a University Admin account. Please use the appropriate login type.')
       }
+
+      if (userType === 'platform_admin' && !['platform_admin', 'admin'].includes(backendRole)) {
+        throw new Error('This account is not a Platform Admin account. Please use the appropriate login type.')
+      }
       
       // Use the auth context to login
       login({ user: data.user, role: backendRole })
@@ -121,6 +125,18 @@ export default function LoginForm({ onSubmit }) {
             'Partnership coordination'
           ]
         }
+      case 'platform_admin':
+        return {
+          logo: 'TT',
+          title: 'Platform Administration',
+          description: 'Monitor system health, manage user permissions, and oversee platform security. Accessible by Platform Admins and System Admins.',
+          highlights: [
+            'System monitoring',
+            'User management',
+            'Security oversight',
+            'Admin access'
+          ]
+        }
       default:
         return {
           logo: 'TT',
@@ -192,6 +208,14 @@ export default function LoginForm({ onSubmit }) {
               <span className="type-icon">🏛️</span>
               <span className="type-text">University Admin</span>
             </button>
+            <button
+              type="button"
+              className={`type-btn ${userType === 'platform_admin' ? 'active' : ''}`}
+              onClick={() => setUserType('platform_admin')}
+            >
+              <span className="type-icon">⚙️</span>
+              <span className="type-text">Platform Admin</span>
+            </button>
           </div>
 
           <form className="login-form" onSubmit={handleSubmit}>
@@ -240,7 +264,7 @@ export default function LoginForm({ onSubmit }) {
             </div>
 
             <button type="submit" className="submit" disabled={loading}>
-              {loading ? 'Signing in…' : `Sign in as ${userType === 'student' ? 'Student' : userType === 'academic' ? 'Academic Leader' : userType === 'university' ? 'University Admin' : 'ICM'}`}
+              {loading ? 'Signing in…' : `Sign in as ${userType === 'student' ? 'Student' : userType === 'academic' ? 'Academic Leader' : userType === 'university' ? 'University Admin' : userType === 'platform_admin' ? 'Platform Admin/Admin' : 'ICM'}`}
             </button>
 
             <div className="meta">

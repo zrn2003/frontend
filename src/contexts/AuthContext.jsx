@@ -74,6 +74,7 @@ export const AuthProvider = ({ children }) => {
       'academic_leader': ['academic_leader'],
       'university_admin': ['university_admin'],
       'icm': ['admin', 'manager', 'viewer'], // ICM dashboard accessible by admin, manager, viewer
+      'platform_admin': ['platform_admin', 'admin'], // Platform admin accessible by platform_admin and admin roles
       'admin': ['admin'],
       'manager': ['manager'],
       'viewer': ['viewer']
@@ -95,9 +96,12 @@ export const AuthProvider = ({ children }) => {
       case 'university_admin':
         return '/university';
       case 'admin':
+        return '/platform-admin'; // Admin users go to Platform Admin dashboard
       case 'manager':
       case 'viewer':
         return '/icm';
+      case 'platform_admin':
+        return '/platform-admin';
       default:
         return '/login';
     }

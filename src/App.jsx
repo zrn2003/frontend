@@ -5,6 +5,7 @@ import { LoginForm, ProtectedRoute, DashboardRedirect, PendingApproval } from '.
 import IcmDashboard from './components/icm/IcmDashboard'
 import StudentDashboard from './pages/StudentDashboard'
 import Signup from './pages/Signup'
+import { PlatformAdminDashboard, PlatformAdminRoute } from './components/platform-admin'
 import OpportunitiesList from './pages/OpportunitiesList'
 import OpportunityForm from './pages/OpportunityForm'
 import UserProfile from './pages/UserProfile'
@@ -51,6 +52,12 @@ function App() {
             <ProtectedRoute requiredRole="icm">
               <IcmDashboard />
             </ProtectedRoute>
+          } />
+          
+          <Route path="/platform-admin" element={
+            <PlatformAdminRoute>
+              <PlatformAdminDashboard />
+            </PlatformAdminRoute>
           } />
           
           {/* University sub-routes */}

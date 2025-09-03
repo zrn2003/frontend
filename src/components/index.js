@@ -10,5 +10,8 @@ export * from './university';
 // ICM Components
 export * from './icm';
 
+// Platform Admin Components
+export * from './platform-admin';
+
 // Shared Components
 export * from './shared';
