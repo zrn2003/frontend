@@ -1,0 +1,97 @@
+/* ===== COMING SOON SECTIONS ===== */
+.coming-soon-section {
+  text-align: center;
+  padding: 24px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.coming-soon-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 16px;
+  background: #1A73E8;
+  border-radius: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.coming-soon-icon svg {
+  width: 40px;
+  height: 40px;
+}
+
+.coming-soon-section h2 {
+  color: #1E1E1E;
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.coming-soon-section h3 {
+  color: #1A73E8;
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.coming-soon-section p {
+  color: #5F6368;
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.coming-soon-features {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background: #F5F7FA;
+  border-radius: 12px;
+  border: 1px solid #E8EAED;
+}
+
+.feature-icon {
+  font-size: 20px;
+  width: 24px;
+  text-align: center;
+}
+
+.feature-item span:last-child {
+  color: #1E1E1E;
+  font-weight: 500;
+}
+
+.coming-soon-note {
+  color: #1A73E8;
+  font-style: italic;
+  font-weight: 500;
+  margin-top: 16px;
+}
+
+/* Dark theme adjustments */
+.student-dashboard.dark .coming-soon-section {
+  background: #161B22;
+  border-radius: 12px;
+  border: 1px solid #30363D;
+}
+
+.student-dashboard.dark .feature-item {
+  background: #0D1117;
+  border-color: #30363D;
+}
+
+.student-dashboard.dark .coming-soon-note {
+  color: #F9AB00;
+}

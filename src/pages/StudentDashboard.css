@@ -305,12 +305,12 @@
 }
 
 /* Menu Item Icons */
-.nav-menu-item-icon.opportunities::before { content: "💼"; }
-.nav-menu-item-icon.applied::before { content: "📝"; }
-.nav-menu-item-icon.profile::before { content: "👤"; }
-.nav-menu-item-icon.mentors::before { content: "🧠"; }
-.nav-menu-item-icon.credentials::before { content: "🏆"; }
-.nav-menu-item-icon.activity::before { content: "📊"; }
+.nav-menu-item-icon.opportunities::before { content: ""; }
+.nav-menu-item-icon.applied::before { content: ""; }
+.nav-menu-item-icon.profile::before { content: ""; }
+.nav-menu-item-icon.mentors::before { content: ""; }
+.nav-menu-item-icon.credentials::before { content: ""; }
+.nav-menu-item-icon.activity::before { content: ""; }
 
 /* Animation for menu items */
 .nav-menu-item {
@@ -1697,15 +1697,8 @@ textarea:focus {
 .sd-nav-item { text-align:left; padding:12px 14px; border-radius:10px; border:1px solid #e5e7eb; background:#5183b5; font-weight:600; cursor:pointer; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px; }
 .sd-nav-item.active { background:#eef2ff; color:#3730a3; border-color:#c7d2fe; }
 .sd-nav-item:hover { background:#0f1012; }
-.sd-preview { background:#ffffff; border:1px solid #e5e7eb; border-radius:12px; padding:16px; }
-.preview-card { display:flex; flex-direction: column; gap:8px; }
-.preview-name { font-weight:800; color:#111827; font-size: 1.1rem; }
-.preview-links { display:flex; flex-wrap:wrap; gap:8px; }
-.preview-links a { background:#f3f4f6; border:1px solid #e5e7eb; padding:6px 10px; border-radius:999px; text-decoration:none; color:#111827; font-weight:600; transition: all 0.3s ease; }
-.preview-links a:hover { background:#e5e7eb; }
-.preview-summary { color:#374151; line-height: 1.6; }
-.preview-skills { display:flex; gap:6px; flex-wrap:wrap; }
-.preview-skill { background:#eef2ff; color:#3730a3; border:1px solid #c7d2fe; border-radius:999px; padding:4px 10px; font-weight:600; font-size: 0.8rem; }
+
+
 
 .sd-main { display:flex; flex-direction: column; gap: 16px; }
 
@@ -2850,4 +2843,4 @@ textarea:focus {
   line-height: 1.4;
 }
 
-.applied-opportunity-card .opp-actions {
+.applied-opportunity-card .opp-actions {}

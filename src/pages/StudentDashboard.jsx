@@ -2,6 +2,153 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../config/api.js';
 import './StudentDashboard.css';
+import './StudentDashboardTheme.css';
+import './ComingSoonStyles.css';
+
+// SVG Icon Components
+const SearchIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="8"/>
+    <path d="m21 21-4.35-4.35"/>
+  </svg>
+);
+
+const WarningIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+    <path d="M12 9v4"/>
+    <path d="M12 17h.01"/>
+  </svg>
+);
+
+const LocationIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+    <circle cx="12" cy="10" r="3"/>
+  </svg>
+);
+
+const TagIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/>
+    <circle cx="7" cy="7" r="1"/>
+  </svg>
+);
+
+const CalendarIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+    <line x1="16" x2="16" y1="2" y2="6"/>
+    <line x1="8" x2="8" y1="2" y2="6"/>
+    <line x1="3" x2="21" y1="10" y2="10"/>
+  </svg>
+);
+
+const PinIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+    <circle cx="12" cy="10" r="3"/>
+  </svg>
+);
+
+const MoneyIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="20" height="12" x="2" y="6" rx="2"/>
+    <circle cx="12" cy="12" r="2"/>
+    <path d="M16 10V8"/>
+    <path d="M8 10v2"/>
+  </svg>
+);
+
+const ClockIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <polyline points="12,6 12,12 16,14"/>
+  </svg>
+);
+
+const EmailIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="20" height="16" x="2" y="4" rx="2"/>
+    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+  </svg>
+);
+
+const PhoneIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+  </svg>
+);
+
+const SendIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m22 2-7 20-4-9-9-4 20-7z"/>
+    <path d="M22 2 11 13"/>
+  </svg>
+);
+
+const StarIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20,6 9,17 4,12"/>
+  </svg>
+);
+
+const TrophyIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+    <path d="M18 9h1.5a2.5 2.5 0 0 1 0-5H18"/>
+    <path d="M4 22h16"/>
+    <path d="M10 14.66V17c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-2.34"/>
+    <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+  </svg>
+);
+
+const DownloadIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+    <polyline points="7,10 12,15 17,10"/>
+    <line x1="12" x2="12" y1="15" y2="3"/>
+  </svg>
+);
+
+const MailIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="20" height="16" x="2" y="4" rx="2"/>
+    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+  </svg>
+);
+
+const DocumentIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+    <polyline points="14,2 14,8 20,8"/>
+    <line x1="16" x2="8" y1="13" y2="13"/>
+    <line x1="16" x2="8" y1="17" y2="17"/>
+    <line x1="10" x2="8" y1="9" y2="9"/>
+  </svg>
+);
+
+const UsersIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+    <circle cx="9" cy="7" r="4"/>
+    <path d="m22 21-2-2a4 4 0 0 0-3-3h-2"/>
+    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  </svg>
+);
+
+const LinkIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+  </svg>
+);
 
 const currentMonth = () => {
   const d = new Date();
@@ -57,6 +204,8 @@ const StudentDashboard = () => {
   const [saving, setSaving] = useState(false);
   const [pagination, setPagination] = useState({ total: 0, limit: 10, offset: 0, pages: 0 });
   const [user, setUser] = useState(null);
+  const [profileImage, setProfileImage] = useState(null);
+  const [profileImageUrl, setProfileImageUrl] = useState('');
   const navigate = useNavigate();
   const syncTimerRef = useRef(null);
   const [profileTab, setProfileTab] = useState('info');
@@ -73,6 +222,14 @@ const StudentDashboard = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoadingApplied, setIsLoadingApplied] = useState(false);
   const [appliedOpportunities, setAppliedOpportunities] = useState([]);
+  const [isSkillOperation, setIsSkillOperation] = useState(false);
+  const [skillInput, setSkillInput] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Debug effect to monitor portfolio changes
+  useEffect(() => {
+    console.log('Portfolio state changed:', portfolio);
+  }, [portfolio]);
 
   useEffect(() => {
     const rawUser = localStorage.getItem('userData') || localStorage.getItem('user');
@@ -88,6 +245,13 @@ const StudentDashboard = () => {
     }
 
     setUser(parsed);
+    
+    // Load profile image from localStorage
+    const savedProfileImage = localStorage.getItem('profileImage');
+    if (savedProfileImage) {
+      setProfileImageUrl(savedProfileImage);
+    }
+    
     fetchOpportunities(true);
     fetchProfile();
     fetchAppliedOpportunities();
@@ -157,7 +321,43 @@ const StudentDashboard = () => {
     return Array.from(extracted).slice(0, 50);
   };
 
+  // Common skills for suggestions
+  const commonSkills = [
+    'JavaScript', 'TypeScript', 'React', 'Vue.js', 'Angular', 'Node.js', 'Express', 'Next.js',
+    'Python', 'Django', 'Flask', 'FastAPI', 'Java', 'Spring Boot', 'C#', 'ASP.NET',
+    'PHP', 'Laravel', 'Ruby', 'Rails', 'Go', 'Rust', 'C++', 'C',
+    'HTML', 'CSS', 'Sass', 'Tailwind CSS', 'Bootstrap', 'Material UI',
+    'MongoDB', 'PostgreSQL', 'MySQL', 'Redis', 'SQLite', 'Firebase',
+    'AWS', 'Azure', 'Google Cloud', 'Docker', 'Kubernetes', 'Jenkins',
+    'Git', 'GitHub', 'GitLab', 'Bitbucket', 'Jira', 'Confluence',
+    'Figma', 'Adobe XD', 'Sketch', 'Photoshop', 'Illustrator',
+    'Machine Learning', 'Data Science', 'TensorFlow', 'PyTorch', 'Pandas', 'NumPy',
+    'GraphQL', 'REST API', 'Microservices', 'DevOps', 'CI/CD', 'Testing',
+    'Jest', 'Cypress', 'Selenium', 'Unit Testing', 'Integration Testing'
+  ];
+
+  // Get skill suggestions based on input
+  const getSkillSuggestions = (input) => {
+    if (!input || input.length < 1) return [];
+    
+    const lowerInput = input.toLowerCase();
+    const suggestions = commonSkills.filter(skill => 
+      skill.toLowerCase().includes(lowerInput) && 
+      !(portfolio.skills || []).some(existingSkill => 
+        existingSkill.toLowerCase() === skill.toLowerCase()
+      )
+    );
+    
+    return suggestions.slice(0, 8); // Limit to 8 suggestions
+  };
+
   const scheduleAutoSync = () => {
+    // Don't auto-sync during skill operations to prevent state conflicts
+    if (isSkillOperation) {
+      console.log('[AutoSync] Skipped during skill operation');
+      return;
+    }
+    
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     syncTimerRef.current = setTimeout(async () => {
       try {
@@ -325,7 +525,11 @@ const StudentDashboard = () => {
       payload
     };
     setActivities(prev => [entry, ...prev].slice(0, 200));
-    applySkillUpdatesFromActivity(payload);
+    
+    // Don't apply skill updates when removing skills to prevent overriding the removal
+    if (type !== 'skill.remove') {
+      applySkillUpdatesFromActivity(payload);
+    }
   };
 
   // Form helpers and validation
@@ -339,14 +543,118 @@ const StudentDashboard = () => {
   };
 
   const computeProfileCompleteness = () => {
-    let score = 0; let total = 6;
-    if (portfolio.summary) score++;
-    if (portfolio.skills && portfolio.skills.length > 0) score++;
-    if (portfolio.experiences && portfolio.experiences.length > 0) score++;
-    if (portfolio.education && portfolio.education.length > 0) score++;
-    if (portfolio.projects && portfolio.projects.length > 0) score++;
-    if (portfolio.githubUrl || portfolio.linkedinUrl || portfolio.websiteUrl || portfolio.resumeUrl) score++;
-    return Math.round((score / total) * 100);
+    let score = 0;
+    let total = 0;
+
+    // Basic Info (20 points)
+    total += 20;
+    if (user?.name && user.name.trim().length > 0) score += 5;
+    if (user?.email && user.email.trim().length > 0) score += 5;
+    if (portfolio.summary && portfolio.summary.trim().length > 0) score += 10;
+
+    // Education (20 points)
+    total += 20;
+    if (portfolio.education && portfolio.education.length > 0) score += 20;
+
+    // Experience (20 points)
+    total += 20;
+    if (portfolio.experiences && portfolio.experiences.length > 0) score += 20;
+
+    // Skills (15 points)
+    total += 15;
+    if (portfolio.skills && portfolio.skills.length > 0) score += 15;
+
+    // Projects (15 points)
+    total += 15;
+    if (portfolio.projects && portfolio.projects.length > 0) score += 15;
+
+    // Links & Resume (10 points)
+    total += 10;
+    const hasLinks = (portfolio.githubUrl && portfolio.githubUrl.trim().length > 0) ||
+                    (portfolio.linkedinUrl && portfolio.linkedinUrl.trim().length > 0) ||
+                    (portfolio.websiteUrl && portfolio.websiteUrl.trim().length > 0) ||
+                    (portfolio.resumeUrl && portfolio.resumeUrl.trim().length > 0);
+    if (hasLinks) score += 10;
+
+    return {
+      percentage: Math.round((score / total) * 100),
+      score,
+      total
+    };
+  };
+
+  const isProfileIncomplete = () => {
+    // Check if any required fields are missing or empty
+    const hasName = user?.name && user.name.trim().length > 0;
+    const hasEmail = user?.email && user.email.trim().length > 0;
+    const hasSummary = portfolio.summary && portfolio.summary.trim().length > 0;
+    const hasEducation = portfolio.education && portfolio.education.length > 0;
+    const hasExperience = portfolio.experiences && portfolio.experiences.length > 0;
+    const hasSkills = portfolio.skills && portfolio.skills.length > 0;
+    const hasProjects = portfolio.projects && portfolio.projects.length > 0;
+    const hasLinks = (portfolio.githubUrl && portfolio.githubUrl.trim().length > 0) ||
+                    (portfolio.linkedinUrl && portfolio.linkedinUrl.trim().length > 0) ||
+                    (portfolio.websiteUrl && portfolio.websiteUrl.trim().length > 0) ||
+                    (portfolio.resumeUrl && portfolio.resumeUrl.trim().length > 0);
+
+    return !hasName || !hasEmail || !hasSummary || !hasEducation || !hasExperience || !hasSkills || !hasProjects || !hasLinks;
+  };
+
+  // Individual section completion checks
+  const isBasicInfoIncomplete = () => {
+    const hasName = user?.name && user.name.trim().length > 0;
+    const hasEmail = user?.email && user.email.trim().length > 0;
+    const hasSummary = portfolio.summary && portfolio.summary.trim().length > 0;
+    return !hasName || !hasEmail || !hasSummary;
+  };
+
+  const isEducationIncomplete = () => {
+    return !portfolio.education || portfolio.education.length === 0;
+  };
+
+  const isExperienceIncomplete = () => {
+    return !portfolio.experiences || portfolio.experiences.length === 0;
+  };
+
+  const isSkillsIncomplete = () => {
+    return !portfolio.skills || portfolio.skills.length === 0;
+  };
+
+  const isProjectsIncomplete = () => {
+    return !portfolio.projects || portfolio.projects.length === 0;
+  };
+
+  // Profile image upload functionality
+  const handleProfileImageUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file.');
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image size should be less than 5MB.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setProfileImageUrl(e.target.result);
+        setProfileImage(file);
+        // Save to localStorage for persistence
+        localStorage.setItem('profileImage', e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeProfileImage = () => {
+    setProfileImage(null);
+    setProfileImageUrl('');
+    localStorage.removeItem('profileImage');
   };
 
   const fetchOpportunities = async (reset = false) => {
@@ -479,16 +787,83 @@ const StudentDashboard = () => {
   const addSkill = (skill) => {
     const s = String(skill || '').trim().toLowerCase();
     if (!s) return;
-    setPortfolio(prev => ({ ...prev, skills: Array.from(new Set((prev.skills || []).map(x=>String(x).toLowerCase()).concat([s]))) }));
+    
+    console.log('addSkill called with:', skill);
+    console.log('processed skill:', s);
+    console.log('current skills before adding:', portfolio.skills);
+    
+    // Check skill limit (maximum 20 skills)
+    const MAX_SKILLS = 20;
+    if ((portfolio.skills || []).length >= MAX_SKILLS) {
+      alert(`You can only add up to ${MAX_SKILLS} skills. Please remove some skills before adding new ones.`);
+      return;
+    }
+    
+    // Check if skill already exists
+    if ((portfolio.skills || []).some(existingSkill => existingSkill.toLowerCase() === s)) {
+      alert('This skill is already in your list.');
+      return;
+    }
+    
+    // Set skill operation flag to prevent auto-sync interference
+    setIsSkillOperation(true);
+    
+    // Clear any pending auto-sync to prevent interference
+    if (syncTimerRef.current) {
+      clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = null;
+    }
+    
+    setPortfolio(prev => {
+      const newSkills = Array.from(new Set((prev.skills || []).map(x=>String(x).toLowerCase()).concat([s])));
+      console.log('new skills after adding:', newSkills);
+      return { ...prev, skills: newSkills };
+    });
+    
     logActivity('skill.add', { text: s });
-    scheduleAutoSync();
+    
+    // Re-enable auto-sync after a delay
+    setTimeout(() => {
+      setIsSkillOperation(false);
+      scheduleAutoSync();
+    }, 200);
   };
 
   const removeSkill = (skill) => {
+    console.log('removeSkill called with:', skill);
     const target = String(skill || '').toLowerCase();
-    setPortfolio(prev => ({ ...prev, skills: (prev.skills || []).filter(x => String(x).toLowerCase() !== target) }));
-    logActivity('skill.remove', { text: skill });
-    scheduleAutoSync();
+    console.log('target skill to remove:', target);
+    console.log('current skills:', portfolio.skills);
+    
+    // Confirm skill removal
+    if (window.confirm(`Are you sure you want to remove "${skill}" from your skills?`)) {
+      console.log('User confirmed removal');
+      
+      // Set skill operation flag to prevent auto-sync interference
+      setIsSkillOperation(true);
+      
+      // Clear any pending auto-sync to prevent interference
+      if (syncTimerRef.current) {
+        clearTimeout(syncTimerRef.current);
+        syncTimerRef.current = null;
+      }
+      
+      setPortfolio(prev => {
+        const newSkills = (prev.skills || []).filter(x => String(x).toLowerCase() !== target);
+        console.log('new skills after removal:', newSkills);
+        return { ...prev, skills: newSkills };
+      });
+      
+      logActivity('skill.remove', { text: skill });
+      
+      // Re-enable auto-sync after a delay
+      setTimeout(() => {
+        setIsSkillOperation(false);
+        scheduleAutoSync();
+      }, 200);
+    } else {
+      console.log('User cancelled removal');
+    }
   };
 
   const addItem = (key, tmpl) => {
@@ -602,42 +977,47 @@ const StudentDashboard = () => {
   };
 
   const renderActivityTab = () => {
-    const counts = computeSkillCounts();
-    const topSkills = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0, 20);
     return (
-      <div className="tab-content">
-        <div className="li-card">
-          <h3 className="li-title">Recent Activity</h3>
-          {activities.length === 0 ? (
-            <div className="no-credentials"><h3>No activities yet</h3><p>Apply, save, or edit your profile to see updates.</p></div>
-          ) : (
-            <div className="activity-list">
-              {activities.map(a => (
-                <div key={a.id} className="activity-item">
-                  <div className="activity-meta">
-                    <span className="activity-type">{a.type}</span>
-                    <span className="activity-time">{new Date(a.at).toLocaleString()}</span>
-                  </div>
-                  {a.payload?.text && <div className="activity-text">{a.payload.text}</div>}
-                </div>
-              ))}
+      <div className="tab-content fade-in">
+        <div className="coming-soon-section">
+          <div className="coming-soon-icon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 3v18h18"/>
+              <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
+            </svg>
+          </div>
+          <h2>Activity Dashboard</h2>
+          <h3>Coming Soon!</h3>
+          <p>We're building a comprehensive activity tracking system that will help you monitor your progress and skill development over time.</p>
+          <div className="coming-soon-features">
+            <div className="feature-item">
+              <span className="feature-icon">📊</span>
+              <span>Real-time Activity Tracking</span>
             </div>
-          )}
-        </div>
-
-        <div className="li-card" style={{ marginTop: 16 }}>
-          <h3 className="li-title">Skills Growth Graph</h3>
-          {topSkills.length === 0 ? (
-            <p>No skills detected yet. Engage with opportunities or add projects.</p>
-          ) : (
-            <div className="skills-graph">
-              {topSkills.map(([skill, count]) => (
-                <span key={skill} className="skill-badge" title={`Derived from ${count} activities`}>
-                  {skill} ({count})
-                </span>
-              ))}
+            <div className="feature-item">
+              <span className="feature-icon">📈</span>
+              <span>Skills Growth Analytics</span>
             </div>
-          )}
+            <div className="feature-item">
+              <span className="feature-icon">🎯</span>
+              <span>Goal Progress Monitoring</span>
+            </div>
+            <div className="feature-item">
+              <span className="feature-icon">📅</span>
+              <span>Timeline View</span>
+            </div>
+            <div className="feature-item">
+              <span className="feature-icon">🏆</span>
+              <span>Achievement Badges</span>
+            </div>
+            <div className="feature-item">
+              <span className="feature-icon">📋</span>
+              <span>Activity Reports</span>
+            </div>
+          </div>
+          <div className="coming-soon-note">
+            Track your learning journey and see your skills grow in real-time!
+          </div>
         </div>
       </div>
     );
@@ -716,14 +1096,14 @@ const StudentDashboard = () => {
         </div>
       ) : error ? (
         <div className="error-container" role="alert">
-          <div className="error-icon">⚠️</div>
+          <div className="error-icon"><WarningIcon /></div>
           <h3>Error Loading Opportunities</h3>
           <p>{error}</p>
           <button className="btn btn-primary" onClick={() => fetchOpportunities(true)}>Try Again</button>
         </div>
       ) : opportunities.length === 0 ? (
         <div className="no-opportunities">
-          <div className="no-data-icon">🔍</div>
+          <div className="no-data-icon"><SearchIcon /></div>
           <h3>No opportunities found</h3>
           <p>Try adjusting your filters or check back later for new opportunities.</p>
         </div>
@@ -735,8 +1115,8 @@ const StudentDashboard = () => {
                 <div className="opp-header">
                   <h4>{opp.title}</h4>
                   <div className="opp-badges">
-                    {opp.verified && <span className="badge verified" aria-label="Verified">✓ Verified</span>}
-                    {opp.highValue && <span className="badge high-value" aria-label="High value">⭐ High Value</span>}
+                    {opp.verified && <span className="badge verified" aria-label="Verified"><CheckIcon /> Verified</span>}
+                    {opp.highValue && <span className="badge high-value" aria-label="High value"><StarIcon /> High Value</span>}
                   </div>
                 </div>
                 <div className="opp-meta">
@@ -745,12 +1125,12 @@ const StudentDashboard = () => {
                 </div>
                 <p className="opp-description">{opp.description}</p>
                 <div className="opp-details">
-                  <span>📍 {opp.location || 'N/A'}</span>
-                  <span>🏷️ {opp.type}</span>
-                  <span>📅 {opp.closingDate ? new Date(opp.closingDate).toLocaleDateString() : 'N/A'}</span>
-                  <span>📌 {opp.status}</span>
-                  {opp.stipend && <span>💰 {opp.stipend}</span>}
-                  {opp.duration && <span>⏱️ {opp.duration}</span>}
+                  <span><LocationIcon /> {opp.location || 'N/A'}</span>
+                  <span><TagIcon /> {opp.type}</span>
+                  <span><CalendarIcon /> {opp.closingDate ? new Date(opp.closingDate).toLocaleDateString() : 'N/A'}</span>
+                  <span><PinIcon /> {opp.status}</span>
+                  {opp.stipend && <span><MoneyIcon /> {opp.stipend}</span>}
+                  {opp.duration && <span><ClockIcon /> {opp.duration}</span>}
                 </div>
                 {opp.requirements && (
                   <div className="opp-requirements">
@@ -764,8 +1144,8 @@ const StudentDashboard = () => {
                   <div className="opp-contact">
                     <strong>Contact:</strong>
                     <div className="contact-info">
-                      {opp.contact_email && <span>📧 {opp.contact_email}</span>}
-                      {opp.contact_phone && <span>📞 {opp.contact_phone}</span>}
+                      {opp.contact_email && <span><EmailIcon /> {opp.contact_email}</span>}
+                      {opp.contact_phone && <span><PhoneIcon /> {opp.contact_phone}</span>}
                     </div>
                   </div>
                 )}
@@ -775,14 +1155,14 @@ const StudentDashboard = () => {
                     onClick={() => handleApplyToOpportunity(opp.id)}
                     title="Apply"
                   >
-                    📩 Apply
+                    <SendIcon /> Apply
                   </button>
                   <button 
                     className="btn btn-secondary"
                     onClick={() => handleSaveOpportunity(opp.id)}
                     title="Save"
                   >
-                    ⭐ Save
+                    <StarIcon /> Save
                   </button>
                 </div>
               </div>
@@ -816,7 +1196,7 @@ const StudentDashboard = () => {
         </div>
       ) : appliedOpportunities.length === 0 ? (
         <div className="no-applied-opportunities">
-          <div className="no-data-icon">📝</div>
+          <div className="no-data-icon"><DocumentIcon /></div>
           <h3>No opportunities applied to yet</h3>
           <p>Apply to opportunities to see their status here.</p>
         </div>
@@ -837,12 +1217,12 @@ const StudentDashboard = () => {
                 <p className="opp-company">{application.posted_by_name || 'TrustTeams partner'}</p>
               </div>
               <div className="opp-details">
-                <span>📅 Applied on: {new Date(application.application_date).toLocaleDateString()}</span>
-                <span>🏷️ Type: {application.opportunity_type}</span>
-                <span>📍 Location: {application.opportunity_location || 'N/A'}</span>
-                {application.opportunity_stipend && <span>💰 Stipend: {application.opportunity_stipend}</span>}
-                {application.opportunity_duration && <span>⏱️ Duration: {application.opportunity_duration}</span>}
-                <span>📌 Status: {application.status}</span>
+                                  <span><CalendarIcon /> Applied on: {new Date(application.application_date).toLocaleDateString()}</span>
+                                  <span><TagIcon /> Type: {application.opportunity_type}</span>
+                                  <span><LocationIcon /> Location: {application.opportunity_location || 'N/A'}</span>
+                                  {application.opportunity_stipend && <span><MoneyIcon /> Stipend: {application.opportunity_stipend}</span>}
+                                  {application.opportunity_duration && <span><ClockIcon /> Duration: {application.opportunity_duration}</span>}
+                                  <span><PinIcon /> Status: {application.status}</span>
               </div>
               {application.cover_letter && (
                 <div className="cover-letter-preview">
@@ -890,28 +1270,108 @@ const StudentDashboard = () => {
       .slice(0, 2)
       .join('')
       .toUpperCase();
-    const completeness = computeProfileCompleteness();
+    const profileData = computeProfileCompleteness();
     return (
       <div className="li-profile-wrap">
         <div className="profile-banner" aria-hidden />
-        <div className="profile-header-card">
-          <div className="profile-avatar">{initials}</div>
-          <div className="profile-meta">
-            <h2 className="profile-name">{user?.name || 'Student'}</h2>
-            <div className="profile-sub">{user?.email || ''}</div>
-            <div className="profile-tags">
-              <span className="tag tag-student">Student</span>
+        <div className="modern-profile-card">
+          {/* Avatar - Centered with ring and shadow */}
+          <div className="avatar-section">
+            <div className="modern-avatar">
+              {profileImageUrl ? (
+                <img 
+                  src={profileImageUrl} 
+                  alt={`${user?.name || 'Student'} profile picture`}
+                  className="avatar-image"
+                />
+              ) : (
+                <span className="avatar-initials">{initials}</span>
+              )}
+              <div className="avatar-overlay">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleProfileImageUpload}
+                  className="avatar-upload-input"
+                  id="profile-image-upload"
+                />
+                <label htmlFor="profile-image-upload" className="avatar-upload-btn">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+                    <circle cx="12" cy="13" r="3"/>
+                  </svg>
+                </label>
+                {profileImageUrl && (
+                  <button 
+                    className="avatar-remove-btn"
+                    onClick={removeProfileImage}
+                    title="Remove image"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/>
+                      <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                )}
             </div>
-            {portfolio.summary && <p className="profile-summary">{portfolio.summary}</p>}
-            <div className="profile-links">
-              {portfolio.githubUrl && <a className="link-chip" href={portfolio.githubUrl} target="_blank" rel="noreferrer">GitHub</a>}
-              {portfolio.linkedinUrl && <a className="link-chip" href={portfolio.linkedinUrl} target="_blank" rel="noreferrer">LinkedIn</a>}
-              {portfolio.websiteUrl && <a className="link-chip" href={portfolio.websiteUrl} target="_blank" rel="noreferrer">Website</a>}
-              {portfolio.resumeUrl && <a className="link-chip" href={portfolio.resumeUrl} target="_blank" rel="noreferrer">Resume</a>}
             </div>
-            <div className="progress">
-              <div className="progress-bar" style={{ width: `${completeness}%` }} />
-              <span className="progress-text">Profile completeness {completeness}%</span>
+            </div>
+
+          {/* User Info - Centered below avatar */}
+          <div className="user-info-section">
+            <div className="email-container">
+              <div className="user-email text-sm muted" title={user?.email || ''}>
+                {user?.email || ''}
+          </div>
+              {user?.email && (
+                <button 
+                  className="copy-email-btn"
+                  onClick={() => {
+                    navigator.clipboard.writeText(user.email);
+                    // You could add a toast notification here
+                  }}
+                  title="Copy email"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                </button>
+              )}
+            </div>
+            <h2 className="user-name text-2xl">
+              {user?.name ? user.name.split(' ').map(word => 
+                word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+              ).join(' ') : 'Student'}
+            </h2>
+            <div className="role-badge-container">
+              <span className="role-badge">Student</span>
+            </div>
+          </div>
+
+          {/* Profile Completeness Section */}
+          <div className="completeness-section">
+            <h3 className="completeness-title">Profile Completeness</h3>
+            <div 
+              className="progress-container"
+              role="progressbar"
+              aria-valuenow={profileData.percentage}
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-label={`Profile ${profileData.percentage}% complete`}
+            >
+              <div 
+                className="progress-bar" 
+                style={{ 
+                  width: `${profileData.percentage}%`,
+                  backgroundColor: '#22C55E',
+                  background: 'linear-gradient(135deg, #22C55E 0%, #16A34A 30%, #15803D 70%, #166534 100%)'
+                }} 
+              />
+              <span className="progress-percentage">{profileData.percentage}%</span>
+            </div>
+            <div className="helper-message">
+              Profile {profileData.percentage}% complete. Finish setup to get better matches.
             </div>
           </div>
         </div>
@@ -923,33 +1383,32 @@ const StudentDashboard = () => {
     <div className="tab-content">
       <div className="sd-shell">
         <aside className={`sd-sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
-          <button className="sd-sidebar-toggle btn btn-secondary" onClick={()=>setIsMobileMenuOpen(v=>!v)}>{isMobileMenuOpen ? 'Hide' : 'Show'}</button>
           <nav className="sd-nav">
-            <button className={`sd-nav-item ${profileTab==='info'?'active':''}`} onClick={()=>setProfileTab('info')}>Profile Info</button>
-            <button className={`sd-nav-item ${profileTab==='education'?'active':''}`} onClick={()=>setProfileTab('education')}>Education</button>
-            <button className={`sd-nav-item ${profileTab==='experience'?'active':''}`} onClick={()=>setProfileTab('experience')}>Experience</button>
-            <button className={`sd-nav-item ${profileTab==='skills'?'active':''}`} onClick={()=>setProfileTab('skills')}>Skills</button>
-            <button className={`sd-nav-item ${profileTab==='projects'?'active':''}`} onClick={()=>setProfileTab('projects')}>Projects</button>
-            <button className="sd-nav-item" onClick={()=>{ window.print(); }}>Export PDF</button>
+            <button className={`sd-nav-item ${profileTab==='info'?'active':''}`} onClick={()=>setProfileTab('info')}>
+              Profile Info
+              {isBasicInfoIncomplete() && <span className="profile-incomplete-dot"></span>}
+            </button>
+            <button className={`sd-nav-item ${profileTab==='education'?'active':''}`} onClick={()=>setProfileTab('education')}>
+              Education
+              {isEducationIncomplete() && <span className="profile-incomplete-dot"></span>}
+            </button>
+            <button className={`sd-nav-item ${profileTab==='experience'?'active':''}`} onClick={()=>setProfileTab('experience')}>
+              Experience
+              {isExperienceIncomplete() && <span className="profile-incomplete-dot"></span>}
+            </button>
+            <button className={`sd-nav-item ${profileTab==='skills'?'active':''}`} onClick={()=>setProfileTab('skills')}>
+              Skills
+              {isSkillsIncomplete() && <span className="profile-incomplete-dot"></span>}
+            </button>
+            <button className={`sd-nav-item ${profileTab==='projects'?'active':''}`} onClick={()=>setProfileTab('projects')}>
+              Projects
+              {isProjectsIncomplete() && <span className="profile-incomplete-dot"></span>}
+            </button>
+            <button className={`sd-nav-item ${profileTab==='export'?'active':''}`} onClick={()=>setProfileTab('export')}>
+              Export PDF
+            </button>
           </nav>
-          <div className="sd-preview">
-            <h4>Live Preview</h4>
-            <div className="preview-card">
-              <div className="preview-name">{user?.name || 'Student Name'}</div>
-              <div className="preview-links">
-                {portfolio.githubUrl && <a href={portfolio.githubUrl} target="_blank" rel="noreferrer">GitHub</a>}
-                {portfolio.linkedinUrl && <a href={portfolio.linkedinUrl} target="_blank" rel="noreferrer">LinkedIn</a>}
-                {portfolio.websiteUrl && <a href={portfolio.websiteUrl} target="_blank" rel="noreferrer">Website</a>}
-                {user?.email && <a href={`mailto:${user.email}`}>Email</a>}
-              </div>
-              {portfolio.summary && <div className="preview-summary">{portfolio.summary}</div>}
-              {(portfolio.skills || []).slice(0,8).length>0 && (
-                <div className="preview-skills">
-                  {(portfolio.skills || []).slice(0,8).map(s => <span key={s} className="preview-skill">{s}</span>)}
-                </div>
-              )}
-            </div>
-          </div>
+
         </aside>
 
         <main className="sd-main">
@@ -1238,23 +1697,156 @@ const StudentDashboard = () => {
           )}
 
           {profileTab === 'skills' && (
-            <section className="li-card">
+            <section className="li-card skills-section">
               <div className="li-card-header">
                 <h3 className="li-title">Skills</h3>
               </div>
-              <div className="skills-only">
-                <div className="skills-graph">
-                  {(portfolio.skills || []).map((skill, i) => (
-                    <span key={skill+String(i)} className="skill-chip deletable" title="Remove skill">
+              
+              <div className="skills-container">
+                {(portfolio.skills || []).length === 0 ? (
+                  <div className="no-skills">
+                    <p>No skills added yet. Add your first skill to get started!</p>
+                  </div>
+                ) : (
+                  (portfolio.skills || []).map((skill, i) => (
+                    <span key={skill+String(i)} className="skill-chip deletable" title="Click × to remove this skill">
                       {skill}
-                      <button className="remove-x" onClick={() => removeSkill(skill)} aria-label={`Remove ${skill}`}>×</button>
+                      <button 
+                        className="remove-x" 
+                        onClick={(e) => {
+                          console.log('Remove button clicked for skill:', skill);
+                          console.log('Event target:', e.target);
+                          e.preventDefault();
+                          e.stopPropagation();
+                          removeSkill(skill);
+                        }} 
+                        aria-label={`Remove ${skill}`}
+                        title={`Remove ${skill}`}
+                      >
+                        ×
+                      </button>
                     </span>
-                  ))}
+                  ))
+                )}
+              </div>
+              
+              <div className="add-skill-container">
+                <div className="skill-suggestions">
+                  <input 
+                    id="newSkill" 
+                    className={`add-skill-input ${(portfolio.skills || []).length >= 20 ? 'disabled' : ''}`}
+                    placeholder={
+                      (portfolio.skills || []).length >= 20 
+                        ? "Skill limit reached (20/20). Remove skills to add more." 
+                        : "Add a skill (e.g., Java, Python, SQL)"
+                    }
+                    disabled={(portfolio.skills || []).length >= 20}
+                    value={skillInput}
+                    onChange={(e) => {
+                      setSkillInput(e.target.value);
+                      if (e.target.value.length > 0) {
+                        setShowSuggestions(true);
+                      } else {
+                        setShowSuggestions(false);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { 
+                        e.preventDefault(); 
+                        if (skillInput.trim()) {
+                          addSkill(skillInput.trim()); 
+                          setSkillInput(''); 
+                          setShowSuggestions(false);
+                        }
+                      } else if (e.key === 'Escape') {
+                        setShowSuggestions(false);
+                      }
+                    }} 
+                    onFocus={() => {
+                      if (skillInput.length > 0) {
+                        setShowSuggestions(true);
+                      }
+                    }}
+                    onBlur={() => {
+                      // Delay hiding suggestions to allow clicking on them
+                      setTimeout(() => setShowSuggestions(false), 200);
+                    }}
+                  />
+                  
+                  {showSuggestions && skillInput.length > 0 && (
+                    <div className="skill-suggestions-dropdown">
+                      {getSkillSuggestions(skillInput).map((suggestion, index) => (
+                        <div
+                          key={index}
+                          className="skill-suggestion-item"
+                          onClick={() => {
+                            addSkill(suggestion);
+                            setSkillInput('');
+                            setShowSuggestions(false);
+                          }}
+                        >
+                          <div className="suggestion-icon"></div>
+                          {suggestion}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div style={{ marginTop: 12 }}>
-                  <input id="newSkill" className="form-input" placeholder="Add a skill and press Enter (e.g., Java, Python)" onKeyDown={(e) => {
-                    if (e.key === 'Enter') { e.preventDefault(); addSkill(e.currentTarget.value); e.currentTarget.value = ''; }
-                  }} />
+                
+                <div className="skill-counter">
+                  {(portfolio.skills || []).length} of 20 skills added
+                </div>
+                
+                {(portfolio.skills || []).length >= 20 && (
+                  <div className="skill-limit-reached">
+                    Maximum 20 skills reached. Remove skills to add more.
+                  </div>
+                )}
+              </div>
+              
+
+            </section>
+          )}
+
+          {profileTab === 'export' && (
+            <section className="li-card">
+              <div className="coming-soon-section">
+                <div className="coming-soon-icon">
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14,2 14,8 20,8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10,9 9,9 8,9"/>
+                  </svg>
+                </div>
+                <h2>PDF Export</h2>
+                <h3>Coming Soon!</h3>
+                <p>We're developing a comprehensive PDF export feature that will allow you to download your complete profile as a professional resume.</p>
+                <div className="coming-soon-features">
+                  <div className="feature-item">
+                    <span className="feature-icon">📄</span>
+                    <span>Professional Resume Format</span>
+                  </div>
+                  <div className="feature-item">
+                    <span className="feature-icon">🎨</span>
+                    <span>Multiple Design Templates</span>
+                  </div>
+                  <div className="feature-item">
+                    <span className="feature-icon">📊</span>
+                    <span>Skills Visualization</span>
+                  </div>
+                  <div className="feature-item">
+                    <span className="feature-icon">⚡</span>
+                    <span>One-Click Download</span>
+                  </div>
+                  <div className="feature-item">
+                    <span className="feature-icon">🔧</span>
+                    <span>Customizable Sections</span>
+                  </div>
+                </div>
+                <div className="coming-soon-note">
+                  This feature will be available in the next update. Stay tuned!
                 </div>
               </div>
             </section>
@@ -1265,119 +1857,57 @@ const StudentDashboard = () => {
   );
 
   const renderMentorsTab = () => (
-    <div className="tab-content fade-in" data-state={mentors.length === 0 ? 'empty' : 'ready'}>
-      <div className="mentors-search">
-        <h3>Find Your Mentor</h3>
-        <div className="search-filters">
-          <input 
-            type="text" 
-            placeholder="Search by specialization or background..."
-            className="search-input"
-            aria-label="Search mentors"
-          />
-          <select className="specialization-filter" aria-label="Filter mentors by specialization">
-            <option value="">All Specializations</option>
-            <option value="Machine Learning">Machine Learning</option>
-            <option value="Web Development">Web Development</option>
-            <option value="Data Science">Data Science</option>
-            <option value="Business">Business</option>
-            <option value="Research">Research</option>
-          </select>
+    <div className="tab-content fade-in">
+      <div className="coming-soon-section">
+        <div className="coming-soon-icon">
+          <UsersIcon />
         </div>
+        <h2>Mentor Program</h2>
+        <h3>Coming Soon!</h3>
+        <p>We're working hard to connect you with industry experts and mentors who can guide your career journey.</p>
+        <div className="coming-soon-features">
+          <div className="feature-item">
+            <span className="feature-icon">🎯</span>
+            <span>Personalized mentorship</span>
+          </div>
+          <div className="feature-item">
+            <span className="feature-icon">💼</span>
+            <span>Industry insights</span>
+          </div>
+          <div className="feature-item">
+            <span className="feature-icon">🚀</span>
+            <span>Career guidance</span>
+          </div>
+        </div>
+        <p className="coming-soon-note">Stay tuned for updates on our mentor program launch!</p>
       </div>
-      {mentors.length === 0 ? (
-        <div className="no-mentors">
-          <div className="no-data-icon">👥</div>
-          <h3>No mentors available</h3>
-          <p>Check back later for new mentor opportunities.</p>
-        </div>
-      ) : (
-        <div className="mentors-grid">
-          {mentors.map(mentor => (
-            <div key={mentor.id} className="mentor-card">
-              <div className="mentor-header">
-                <div className="mentor-avatar">
-                  <span className="avatar-text">{mentor.name.charAt(0)}</span>
-                </div>
-                <div className="mentor-info">
-                  <h4>{mentor.name}</h4>
-                  <p className="mentor-specialization">{mentor.specialization}</p>
-                  <p className="mentor-company">{mentor.company}</p>
-                </div>
-                <div className="mentor-rating">
-                  <span className="stars stars-colored">{"\u2B50".repeat(Math.floor(mentor.rating || 0))}</span>
-                  <span className="rating-text">{mentor.rating}</span>
-                </div>
-              </div>
-              <p className="mentor-background">{mentor.background}</p>
-              <div className="mentor-status">
-                <span className={`status ${mentor.availability.toLowerCase()}`}>
-                  {mentor.availability}
-                </span>
-              </div>
-              <div className="mentor-actions">
-                <button 
-                  className="btn btn-cta"
-                  onClick={() => alert('Connect request sent!')}
-                >
-                  Connect
-                  </button>
-                <button className="btn btn-secondary">View Profile</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 
   const renderCredentialsTab = () => (
-    <div className="tab-content fade-in" data-state={credentials.length === 0 ? 'empty' : 'ready'}>
-      <div className="credentials-header">
-        <h3>My Micro-Credentials</h3>
-        <p>Showcase your capabilities to future employers</p>
-      </div>
-      {credentials.length === 0 ? (
-        <div className="no-credentials">
-          <div className="no-data-icon">🎖️</div>
-          <h3>No credentials yet</h3>
-          <p>Complete projects and internships to earn your first credentials!</p>
+    <div className="tab-content fade-in">
+      <div className="coming-soon-section">
+        <div className="coming-soon-icon">
+          <TrophyIcon />
         </div>
-      ) : (
-        <div className="credentials-grid">
-          {credentials.map(credential => (
-            <div key={credential.id} className="credential-card">
-              <div className="credential-header">
-                <div className="credential-icon">🎖️</div>
-                <div className="credential-info">
-                  <h4>{credential.name}</h4>
-                  <p className="issuer">Issued by {credential.issuer}</p>
-                  <p className="date">Earned on {credential.date}</p>
-                </div>
-                {credential.verified && (
-                  <div className="verification-badge">
-                    <span>✓ Verified</span>
-                  </div>
-                )}
-              </div>
-              <div className="credential-project">
-                <strong>Project:</strong> {credential.project}
-              </div>
-              <div className="credential-actions">
-                <button className="btn btn-primary">⬇️ Download</button>
-                <button className="btn btn-secondary">🔗 Share</button>
-              </div>
-            </div>
-          ))}
+        <h2>Micro-Credentials</h2>
+        <h3>Coming Soon!</h3>
+        <p>Earn verified credentials for your skills and project completions to showcase your capabilities to employers.</p>
+        <div className="coming-soon-features">
+          <div className="feature-item">
+            <span className="feature-icon">🏆</span>
+            <span>Verified skills</span>
+          </div>
+          <div className="feature-item">
+            <span className="feature-icon">📜</span>
+            <span>Digital certificates</span>
+          </div>
+          <div className="feature-item">
+            <span className="feature-icon">💼</span>
+            <span>Employer recognition</span>
+          </div>
         </div>
-      )}
-      <div className="credentials-info">
-        <h4>About Micro-Credentials</h4>
-        <p>
-          TrustTeams micro-credentials are recognized by leading companies and institutions. 
-          Each credential represents verified skills and project completions, helping you 
-          stand out in the job market.
-        </p>
+        <p className="coming-soon-note">Complete projects and internships to unlock your first credentials!</p>
       </div>
     </div>
   );
@@ -1386,7 +1916,11 @@ const StudentDashboard = () => {
     <div className={`student-dashboard ${isDarkTheme ? 'dark' : 'light'}`}>
       {/* Mobile Menu Toggle */}
       <button className="nav-toggle" onClick={handleMobileMenuToggle}>
-        ☰
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="3" x2="21" y1="6" y2="6"/>
+          <line x1="3" x2="21" y1="12" y2="12"/>
+          <line x1="3" x2="21" y1="18" y2="18"/>
+        </svg>
       </button>
 
       {/* Navigation Sidebar */}
@@ -1399,75 +1933,101 @@ const StudentDashboard = () => {
 
         {/* Navigation Menu */}
         <div className="nav-menu">
-          <a 
-            href="#opportunities"
-            className={`nav-menu-item ${activeTab === 'opportunities' ? 'active' : ''}`}
-            onClick={() => setActiveTab('opportunities')}
-          >
-            <span className="nav-menu-item-icon opportunities"></span>
-            <span className="nav-menu-item-text">Opportunities</span>
-          </a>
+                     <a 
+             href="#opportunities"
+             className={`nav-menu-item ${activeTab === 'opportunities' ? 'active' : ''}`}
+             onClick={() => setActiveTab('opportunities')}
+           >
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+               <polyline points="7.5,4.21 12,6.81 16.5,4.21"/>
+               <polyline points="7.5,19.79 7.5,14.6 3,12"/>
+               <polyline points="21,12 16.5,14.6 16.5,19.79"/>
+               <polyline points="3.27,6.96 12,12.01 20.73,6.96"/>
+               <line x1="12" x2="12" y1="22.08" y2="12"/>
+             </svg>
+             <span className="nav-menu-item-text">Opportunities</span>
+           </a>
 
-          <a 
-            href="#applied"
-            className={`nav-menu-item ${activeTab === 'applied' ? 'active' : ''}`}
-            onClick={() => setActiveTab('applied')}
-          >
-            <span className="nav-menu-item-icon applied"></span>
-            <span className="nav-menu-item-text">Applied</span>
-          </a>
+                     <a 
+             href="#applied"
+             className={`nav-menu-item ${activeTab === 'applied' ? 'active' : ''}`}
+             onClick={() => setActiveTab('applied')}
+           >
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+               <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+               <polyline points="14,2 14,8 20,8"/>
+               <line x1="16" x2="8" y1="13" y2="13"/>
+               <line x1="16" x2="8" y1="17" y2="17"/>
+               <line x1="10" x2="8" y1="9" y2="9"/>
+             </svg>
+             <span className="nav-menu-item-text">Applied</span>
+           </a>
 
-          <a 
-            href="#portfolio"
-            className={`nav-menu-item ${activeTab === 'portfolio' ? 'active' : ''}`}
-            onClick={() => setActiveTab('portfolio')}
-          >
-            <span className="nav-menu-item-icon profile"></span>
-            <span className="nav-menu-item-text">Profile</span>
-          </a>
+                     <a 
+             href="#portfolio"
+             className={`nav-menu-item ${activeTab === 'portfolio' ? 'active' : ''}`}
+             onClick={() => setActiveTab('portfolio')}
+           >
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+               <circle cx="12" cy="7" r="4"/>
+             </svg>
+             <span className="nav-menu-item-text">Profile</span>
+           </a>
 
-          <a 
-            href="#mentors"
-            className={`nav-menu-item ${activeTab === 'mentors' ? 'active' : ''}`}
-            onClick={() => setActiveTab('mentors')}
-          >
-            <span className="nav-menu-item-icon mentors"></span>
-            <span className="nav-menu-item-text">Mentors</span>
-          </a>
+                     <a 
+             href="#mentors"
+             className={`nav-menu-item ${activeTab === 'mentors' ? 'active' : ''}`}
+             onClick={() => setActiveTab('mentors')}
+           >
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+               <circle cx="9" cy="7" r="4"/>
+               <path d="m22 21-2-2a4 4 0 0 0-3-3h-2"/>
+               <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+             </svg>
+             <span className="nav-menu-item-text">Mentors</span>
+           </a>
 
-          <a 
-            href="#credentials"
-            className={`nav-menu-item ${activeTab === 'credentials' ? 'active' : ''}`}
-            onClick={() => setActiveTab('credentials')}
-          >
-            <span className="nav-menu-item-icon credentials"></span>
-            <span className="nav-menu-item-text">Credentials</span>
-          </a>
+                     <a 
+             href="#credentials"
+             className={`nav-menu-item ${activeTab === 'credentials' ? 'active' : ''}`}
+             onClick={() => setActiveTab('credentials')}
+           >
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+               <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+               <path d="M18 9h1.5a2.5 2.5 0 0 1 0-5H18"/>
+               <path d="M4 22h16"/>
+               <path d="M10 14.66V17c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-2.34"/>
+               <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+             </svg>
+             <span className="nav-menu-item-text">Credentials</span>
+           </a>
 
-          <a 
-            href="#activity"
-            className={`nav-menu-item ${activeTab === 'activity' ? 'active' : ''}`}
-            onClick={() => setActiveTab('activity')}
-          >
-            <span className="nav-menu-item-icon activity"></span>
-            <span className="nav-menu-item-text">Activity</span>
-          </a>
+                     <a 
+             href="#activity"
+             className={`nav-menu-item ${activeTab === 'activity' ? 'active' : ''}`}
+             onClick={() => setActiveTab('activity')}
+           >
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+               <path d="M12 2v20M2 12h20"/>
+               <path d="m9 9 6 6"/>
+               <path d="m15 9-6 6"/>
+             </svg>
+             <span className="nav-menu-item-text">Activity</span>
+           </a>
         </div>
 
         {/* Bottom Section */}
         <div className="nav-bottom">
-          {/* Theme Toggle */}
-          <div className="theme-toggle" onClick={handleThemeToggle}>
-            <div className="theme-toggle-text">
-              <span className="theme-toggle-icon">🌙</span>
-              {isDarkTheme ? 'Light Mode' : 'Dark Mode'}
-            </div>
-            <div className={`theme-toggle-switch ${isDarkTheme ? 'active' : ''}`}></div>
-          </div>
-
           {/* Logout Button */}
           <button className="nav-logout" onClick={handleLogout}>
-            <span className="nav-logout-icon">🚪</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16,17 21,12 16,7"/>
+              <line x1="21" x2="9" y1="12" y2="12"/>
+            </svg>
             Logout
           </button>
         </div>
@@ -1494,9 +2054,22 @@ const StudentDashboard = () => {
           </div>
           <div className="header-actions">
             <div className="header-icons">
+              {/* Theme Toggle */}
+              <div className="header-theme-toggle" onClick={handleThemeToggle}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                </svg>
+                <span className="header-theme-toggle-text">
+                  {isDarkTheme ? 'Light Mode' : 'Dark Mode'}
+                </span>
+              </div>
+              
               <div className="dropdown">
                 <button className="icon-btn" title="Notifications" onClick={()=>{ setShowNotif(v=>!v); setShowMsgs(false); }}>
-                  🔔 {notificationItems.filter(n=>!n.read).length > 0 && <span className="badge-count">{notificationItems.filter(n=>!n.read).length}</span>}
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/>
+                  <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+                </svg> {notificationItems.filter(n=>!n.read).length > 0 && <span className="badge-count">{notificationItems.filter(n=>!n.read).length}</span>}
                 </button>
                 {showNotif && (
                   <div className="dropdown-menu">
@@ -1520,7 +2093,7 @@ const StudentDashboard = () => {
               </div>
               <div className="dropdown">
                 <button className="icon-btn" title="Messages" onClick={()=>{ setShowMsgs(v=>!v); setShowNotif(false); }}>
-                  ✉️ {messageItems.filter(m=>!m.read).length > 0 && <span className="badge-count">{messageItems.filter(m=>!m.read).length}</span>}
+                  <MailIcon /> {messageItems.filter(m=>!m.read).length > 0 && <span className="badge-count">{messageItems.filter(m=>!m.read).length}</span>}
                 </button>
                 {showMsgs && (
                   <div className="dropdown-menu">
