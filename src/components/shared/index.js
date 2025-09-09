@@ -5,3 +5,4 @@ export { default as DataTable } from './DataTable';
 export { default as ProtectedRoute } from './ProtectedRoute';
 export { default as DashboardRedirect } from './DashboardRedirect';
 export { default as PendingApproval } from './PendingApproval';
+export { default as TrustTeamsLoader } from './TrustTeamsLoader';

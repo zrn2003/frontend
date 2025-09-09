@@ -1,8 +1,9 @@
 import { Routes, Route } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import './styles/theme.css'
 
 import HomePage from './pages/HomePage'
-import { LoginForm, ProtectedRoute, DashboardRedirect, PendingApproval } from './components/shared'
+import { LoginForm, ProtectedRoute, DashboardRedirect, PendingApproval, TrustTeamsLoader } from './components/shared'
 import IcmDashboard from './components/icm/IcmDashboard'
 import StudentDashboard from './pages/StudentDashboard'
 import Signup from './pages/Signup'
@@ -20,9 +21,35 @@ import EmailVerification from './pages/EmailVerification'
 import { AuthProvider } from './contexts/AuthContext'
 
 function App() {
+  const [isAppLoading, setIsAppLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+
+  useEffect(() => {
+    // Simulate app initialization loading
+    const loadingInterval = setInterval(() => {
+      setLoadingProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(loadingInterval);
+          setTimeout(() => setIsAppLoading(false), 500);
+          return 100;
+        }
+        return prev + Math.random() * 15;
+      });
+    }, 100);
+
+    return () => clearInterval(loadingInterval);
+  }, []);
+
   return (
     <AuthProvider>
       <div className="page-container">
+        <TrustTeamsLoader 
+          isLoading={isAppLoading}
+          message="Initializing TrustTeams..."
+          showProgress={true}
+          progress={loadingProgress}
+          size="large"
+        />
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<HomePage />} />

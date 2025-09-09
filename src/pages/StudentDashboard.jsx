@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../config/api.js';
+import { TrustTeamsLoader } from '../components/shared';
 import './StudentDashboard.css';
 import './StudentDashboardTheme.css';
 import './ComingSoonStyles.css';
@@ -528,7 +529,7 @@ const StudentDashboard = () => {
     
     // Don't apply skill updates when removing skills to prevent overriding the removal
     if (type !== 'skill.remove') {
-      applySkillUpdatesFromActivity(payload);
+    applySkillUpdatesFromActivity(payload);
     }
   };
 
@@ -985,7 +986,7 @@ const StudentDashboard = () => {
               <path d="M3 3v18h18"/>
               <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
             </svg>
-          </div>
+                  </div>
           <h2>Activity Dashboard</h2>
           <h3>Coming Soon!</h3>
           <p>We're building a comprehensive activity tracking system that will help you monitor your progress and skill development over time.</p>
@@ -993,7 +994,7 @@ const StudentDashboard = () => {
             <div className="feature-item">
               <span className="feature-icon">📊</span>
               <span>Real-time Activity Tracking</span>
-            </div>
+                </div>
             <div className="feature-item">
               <span className="feature-icon">📈</span>
               <span>Skills Growth Analytics</span>
@@ -1001,7 +1002,7 @@ const StudentDashboard = () => {
             <div className="feature-item">
               <span className="feature-icon">🎯</span>
               <span>Goal Progress Monitoring</span>
-            </div>
+        </div>
             <div className="feature-item">
               <span className="feature-icon">📅</span>
               <span>Timeline View</span>
@@ -1732,15 +1733,15 @@ const StudentDashboard = () => {
               
               <div className="add-skill-container">
                 <div className="skill-suggestions">
-                  <input 
-                    id="newSkill" 
-                    className={`add-skill-input ${(portfolio.skills || []).length >= 20 ? 'disabled' : ''}`}
-                    placeholder={
-                      (portfolio.skills || []).length >= 20 
-                        ? "Skill limit reached (20/20). Remove skills to add more." 
+                <input 
+                  id="newSkill" 
+                  className={`add-skill-input ${(portfolio.skills || []).length >= 20 ? 'disabled' : ''}`}
+                  placeholder={
+                    (portfolio.skills || []).length >= 20 
+                      ? "Skill limit reached (20/20). Remove skills to add more." 
                         : "Add a skill (e.g., Java, Python, SQL)"
-                    }
-                    disabled={(portfolio.skills || []).length >= 20}
+                  }
+                  disabled={(portfolio.skills || []).length >= 20}
                     value={skillInput}
                     onChange={(e) => {
                       setSkillInput(e.target.value);
@@ -1750,9 +1751,9 @@ const StudentDashboard = () => {
                         setShowSuggestions(false);
                       }
                     }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') { 
-                        e.preventDefault(); 
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { 
+                      e.preventDefault(); 
                         if (skillInput.trim()) {
                           addSkill(skillInput.trim()); 
                           setSkillInput(''); 
@@ -1914,6 +1915,14 @@ const StudentDashboard = () => {
 
   return (
     <div className={`student-dashboard ${isDarkTheme ? 'dark' : 'light'}`}>
+      {/* TrustTeams Loading Bar */}
+      <TrustTeamsLoader 
+        isLoading={isLoading}
+        message="Loading opportunities..."
+        showProgress={false}
+        size="medium"
+      />
+      
       {/* Mobile Menu Toggle */}
       <button className="nav-toggle" onClick={handleMobileMenuToggle}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2056,9 +2065,9 @@ const StudentDashboard = () => {
             <div className="header-icons">
               {/* Theme Toggle */}
               <div className="header-theme-toggle" onClick={handleThemeToggle}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
-                </svg>
+                <span className="theme-toggle-icon">
+                  {isDarkTheme ? '☀️' : '🌙'}
+                </span>
                 <span className="header-theme-toggle-text">
                   {isDarkTheme ? 'Light Mode' : 'Dark Mode'}
                 </span>

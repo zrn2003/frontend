@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../config/api.js';
+import { TrustTeamsLoader } from '../shared';
 import './IcmDashboard.css';
+import './IcmDashboardTheme.css';
 
 const IcmDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -14,6 +16,13 @@ const IcmDashboard = () => {
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // University section specific states
+  const [universitiesLoading, setUniversitiesLoading] = useState(false);
+  const [filteredUniversities, setFilteredUniversities] = useState([]);
+  const [selectedUniversity, setSelectedUniversity] = useState(null);
+  const [showUniversityModal, setShowUniversityModal] = useState(false);
+  const [universityStats, setUniversityStats] = useState({});
   
   // Profile states
   const [icmProfile, setIcmProfile] = useState(null);
@@ -38,6 +47,10 @@ const IcmDashboard = () => {
   
   // Notification state
   const [notification, setNotification] = useState(null);
+  
+  // Applications state
+  const [allApplications, setAllApplications] = useState([]);
+  const [applicationsLoading, setApplicationsLoading] = useState(false);
   
      // Opportunity form state
    const [opportunityForm, setOpportunityForm] = useState({
@@ -67,7 +80,33 @@ const IcmDashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
+    
+    // Load theme preference from localStorage
+    const savedTheme = localStorage.getItem('icm-theme');
+    if (savedTheme) {
+      setIsDarkTheme(savedTheme === 'dark');
+    }
   }, []);
+
+  // Fetch applications when Applications tab is active
+  useEffect(() => {
+    if (activeTab === 'applications') {
+      fetchAllApplications();
+    } else if (activeTab === 'universities') {
+      fetchUniversitiesData();
+    }
+  }, [activeTab]);
+
+  // Apply theme to document body
+  useEffect(() => {
+    if (isDarkTheme) {
+      document.body.classList.add('dark');
+      localStorage.setItem('icm-theme', 'dark');
+    } else {
+      document.body.classList.remove('dark');
+      localStorage.setItem('icm-theme', 'light');
+    }
+  }, [isDarkTheme]);
 
   const fetchDashboardData = async () => {
     try {
@@ -103,12 +142,139 @@ const IcmDashboard = () => {
     }
   };
 
+  const fetchAllApplications = async () => {
+    try {
+      setApplicationsLoading(true);
+      
+      // Fetch applications for all opportunities that belong to this ICM user
+      const allApplications = [];
+      
+      // Get all opportunities first
+      const opportunitiesList = opportunities || [];
+      
+      // Fetch applications for each opportunity
+      for (const opportunity of opportunitiesList) {
+        try {
+          const response = await api.getIcmOpportunityApplications(opportunity.id);
+          if (response && response.applications && Array.isArray(response.applications)) {
+            // Add opportunity title to each application
+            const applicationsWithTitle = response.applications.map(app => ({
+              ...app,
+              opportunity_title: opportunity.title,
+              opportunity_id: opportunity.id
+            }));
+            allApplications.push(...applicationsWithTitle);
+          }
+        } catch (error) {
+          console.error(`Error fetching applications for opportunity ${opportunity.id}:`, error);
+          // Continue with other opportunities even if one fails
+        }
+      }
+      
+      setAllApplications(allApplications);
+    } catch (error) {
+      console.error('Error fetching applications:', error);
+      showNotification('Failed to load applications', 'error');
+    } finally {
+      setApplicationsLoading(false);
+    }
+  };
+
+  const fetchUniversitiesData = async () => {
+    try {
+      setUniversitiesLoading(true);
+      const universitiesData = await api.getIcmUniversities();
+      
+      // Process universities with individual error handling to prevent any failures
+      const enrichedUniversities = [];
+      
+      for (const uni of universitiesData) {
+        // Start with basic university data
+        const enrichedUni = {
+          ...uni,
+          students: uni.students || 0,
+          activeProjects: uni.activeProjects || 0,
+          partnerships: uni.partnerships || 0,
+          opportunities: 0,
+          lastActivity: new Date().toISOString(),
+          status: 'active'
+        };
+
+        // Try to fetch additional details (non-blocking)
+        try {
+          const stats = await api.getIcmUniversityDetails(uni.id);
+          if (stats) {
+            enrichedUni.students = stats.totalStudents || enrichedUni.students;
+            enrichedUni.activeProjects = stats.activeProjects || enrichedUni.activeProjects;
+            enrichedUni.partnerships = stats.partnerships || enrichedUni.partnerships;
+            enrichedUni.opportunities = stats.opportunities || 0;
+            enrichedUni.lastActivity = stats.lastActivity || enrichedUni.lastActivity;
+            enrichedUni.status = stats.status || enrichedUni.status;
+          }
+        } catch (error) {
+          // Silently handle errors - we already have fallback data
+          if (error.message === 'Not found') {
+            console.warn(`University ${uni.id} details not found, using basic data`);
+          } else {
+            console.error(`Error fetching details for university ${uni.id}:`, error);
+          }
+          // Continue with basic data - no need to do anything else
+        }
+
+        enrichedUniversities.push(enrichedUni);
+      }
+      
+      setUniversities(enrichedUniversities);
+      setFilteredUniversities(enrichedUniversities);
+    } catch (error) {
+      console.error('Error fetching universities:', error);
+      showNotification('Failed to load universities', 'error');
+    } finally {
+      setUniversitiesLoading(false);
+    }
+  };
+
+  // Search functionality for universities
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setFilteredUniversities(universities);
+    } else {
+      const filtered = universities.filter(uni =>
+        uni.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        uni.domain.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        uni.location.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredUniversities(filtered);
+    }
+  }, [searchTerm, universities]);
+
   const handleThemeToggle = () => {
     setIsDarkTheme(!isDarkTheme);
   };
 
   const handleMobileMenuToggle = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  // University action handlers
+  const handleViewUniversityDetails = async (university) => {
+    try {
+      setSelectedUniversity(university);
+      setShowUniversityModal(true);
+    } catch (error) {
+      console.error('Error viewing university details:', error);
+      showNotification('Failed to load university details', 'error');
+    }
+  };
+
+  const handleViewUniversityStudents = (university) => {
+    showNotification(`Viewing students for ${university.name}`, 'info');
+    // TODO: Implement student viewing functionality
+  };
+
+  const handleViewUniversityPartnerships = (university) => {
+    showNotification(`Viewing partnerships for ${university.name}`, 'info');
+    // TODO: Implement partnership viewing functionality
   };
 
   const handleLogout = () => {
@@ -331,14 +497,22 @@ const IcmDashboard = () => {
     }
   };
 
-  const handleApproveApplication = (applicationId) => {
+  const handleApproveApplication = async (applicationId) => {
     const reviewNotes = prompt('Add review notes (optional):');
-    handleUpdateApplicationStatus(applicationId, 'approved', reviewNotes);
+    await handleUpdateApplicationStatus(applicationId, 'approved', reviewNotes);
+    // Refresh applications data after status update
+    if (activeTab === 'applications') {
+      fetchAllApplications();
+    }
   };
 
-  const handleRejectApplication = (applicationId) => {
+  const handleRejectApplication = async (applicationId) => {
     const reviewNotes = prompt('Add review notes (optional):');
-    handleUpdateApplicationStatus(applicationId, 'rejected', reviewNotes);
+    await handleUpdateApplicationStatus(applicationId, 'rejected', reviewNotes);
+    // Refresh applications data after status update
+    if (activeTab === 'applications') {
+      fetchAllApplications();
+    }
   };
 
   const handleEditOpportunity = async (opportunity) => {
@@ -434,7 +608,12 @@ const IcmDashboard = () => {
     <div className="overview-tab">
       <div className="stats-grid">
         <div className="stat-card">
-          <div className="stat-icon">🎓</div>
+          <div className="stat-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+            </svg>
+          </div>
           <div className="stat-content">
             <h3>{stats.totalUniversities || 0}</h3>
             <p>Total Universities</p>
@@ -448,14 +627,22 @@ const IcmDashboard = () => {
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon">📝</div>
+          <div className="stat-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+          </div>
           <div className="stat-content">
             <h3>{stats.totalOpportunities || 0}</h3>
             <p>Total Opportunities</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon">🤝</div>
+          <div className="stat-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+          </div>
           <div className="stat-content">
             <h3>{stats.totalPartnerships || 0}</h3>
             <p>Active Partnerships</p>
@@ -477,9 +664,28 @@ const IcmDashboard = () => {
                 </div>
                 <p>{opp.description?.substring(0, 100)}...</p>
                 <div className="opportunity-meta">
-                  <span><i>📍</i> {opp.location}</span>
-                  <span><i>💰</i> {opp.stipend}</span>
-                  <span><i>📅</i> {new Date(opp.closing_date).toLocaleDateString()}</span>
+                  <span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: '6px', verticalAlign: 'middle'}}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    {opp.location}
+                  </span>
+                  <span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: '6px', verticalAlign: 'middle'}}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
+                    </svg>
+                    {opp.stipend}
+                  </span>
+                  <span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: '6px', verticalAlign: 'middle'}}>
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                      <line x1="16" y1="2" x2="16" y2="6"/>
+                      <line x1="8" y1="2" x2="8" y2="6"/>
+                      <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                    {new Date(opp.closing_date).toLocaleDateString()}
+                  </span>
                 </div>
               </div>
             ))}
@@ -493,19 +699,27 @@ const IcmDashboard = () => {
               className="action-btn"
               onClick={() => setShowOpportunityModal(true)}
             >
-              <span>📝</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
+              </svg>
               Post New Opportunity
             </button>
             <button className="action-btn">
-              <span>🎓</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+              </svg>
               Add University
             </button>
             <button className="action-btn">
-              <span>🤝</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+              </svg>
               New Partnership
             </button>
             <button className="action-btn">
-              <span>📊</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+              </svg>
               View Reports
             </button>
           </div>
@@ -517,63 +731,156 @@ const IcmDashboard = () => {
   const renderUniversitiesTab = () => (
     <div className="universities-tab">
       <div className="header-actions">
-        <div className="search-box">
-          <span className="search-icon">🔍</span>
-          <input
-            type="text"
-            className="search-input"
-            placeholder="Search universities..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div className="search-container">
+          <div className="search-box">
+            <span className="search-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+              </svg>
+            </span>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search universities by name, domain, or location..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button 
+                className="clear-search-btn"
+                onClick={() => setSearchTerm('')}
+                title="Clear search"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            )}
+          </div>
+          <div className="search-stats">
+            <span className="stat-badge">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+              </svg>
+              {filteredUniversities.length} of {universities.length} Universities
+            </span>
+            {searchTerm && (
+              <span className="search-results-info">
+                {filteredUniversities.length === 0 ? 'No results found' : 
+                 filteredUniversities.length === 1 ? '1 result' : 
+                 `${filteredUniversities.length} results`}
+              </span>
+            )}
+          </div>
         </div>
-        <button className="btn btn-primary">
-          <span>➕</span>
-          Add University
-        </button>
       </div>
 
-      {loading ? (
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Loading universities...</p>
+      {universitiesLoading ? (
+        <TrustTeamsLoader 
+          isLoading={true}
+          message="Loading universities..."
+          showProgress={false}
+          size="small"
+        />
+      ) : filteredUniversities.length === 0 ? (
+        <div className="no-data-container">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+          </svg>
+          <h3>No Universities Found</h3>
+          <p>{searchTerm ? 'Try adjusting your search criteria' : 'No universities are currently registered'}</p>
         </div>
       ) : (
         <div className="universities-grid">
-          {universities.map(uni => (
+          {filteredUniversities.map(uni => (
             <div key={uni.id} className="university-card">
               <div className="university-header">
                 <div className="university-logo">
-                  {uni.name.charAt(0)}
+                  {uni.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="university-info">
                   <h3>{uni.name}</h3>
                   <p className="university-domain">{uni.domain}</p>
                   <p className="university-location">
-                    <span>📍</span> {uni.location}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: '6px', verticalAlign: 'middle'}}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    {uni.location}
                   </p>
+                  <div className="university-status">
+                    <span className={`status-indicator ${uni.status}`}>
+                      {uni.status === 'active' ? 'Active' : 'Inactive'}
+                    </span>
+                    <span className="last-activity">
+                      Last activity: {new Date(uni.lastActivity).toLocaleDateString()}
+                    </span>
+                  </div>
                 </div>
               </div>
               
               <div className="university-stats">
                 <div className="stat-item">
-                  <span className="stat-number">{uni.students}</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
+                  </svg>
+                  <span className="stat-number">{uni.students || 0}</span>
                   <span className="stat-label">Students</span>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-number">{uni.activeProjects}</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                  <span className="stat-number">{uni.activeProjects || 0}</span>
                   <span className="stat-label">Projects</span>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-number">{uni.partnerships}</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                  </svg>
+                  <span className="stat-number">{uni.partnerships || 0}</span>
                   <span className="stat-label">Partnerships</span>
+                </div>
+                <div className="stat-item">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2V6"/>
+                  </svg>
+                  <span className="stat-number">{uni.opportunities || 0}</span>
+                  <span className="stat-label">Opportunities</span>
                 </div>
               </div>
               
               <div className="university-actions">
-                <button className="btn btn-outline">View Details</button>
-                <button className="btn btn-outline">Students</button>
-                <button className="btn btn-outline">Partnerships</button>
+                <button 
+                  className="btn btn-outline"
+                  onClick={() => handleViewUniversityDetails(uni)}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                  </svg>
+                  View Details
+                </button>
+                <button 
+                  className="btn btn-outline"
+                  onClick={() => handleViewUniversityStudents(uni)}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
+                  </svg>
+                  Students
+                </button>
+                <button 
+                  className="btn btn-outline"
+                  onClick={() => handleViewUniversityPartnerships(uni)}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                  </svg>
+                  Partnerships
+                </button>
               </div>
             </div>
           ))}
@@ -590,14 +897,18 @@ const IcmDashboard = () => {
           className="btn btn-primary"
           onClick={() => setShowOpportunityModal(true)}
         >
-          <span>➕</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
+          </svg>
           Post Opportunity
         </button>
       </div>
 
       {opportunities.length === 0 ? (
         <div className="no-opportunities">
-          <span>📝</span>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
           <h3>No Opportunities Posted</h3>
           <p>Start by posting your first opportunity to connect with talented students.</p>
           <button 
@@ -619,36 +930,79 @@ const IcmDashboard = () => {
               </div>
               
               <div className="opportunity-details">
-                <p><strong>Type:</strong> {opp.type}</p>
-                <p><strong>Location:</strong> {opp.location}</p>
-                <p><strong>Stipend:</strong> {opp.stipend}</p>
-                <p><strong>Duration:</strong> {opp.duration}</p>
-                <p><strong>Applications:</strong> {opp.application_count || 0}</p>
-                <p><strong>Closing:</strong> {new Date(opp.closing_date).toLocaleDateString()}</p>
+                <p>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: '8px', verticalAlign: 'middle'}}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+                  </svg>
+                  <strong>Type:</strong> {opp.type}
+                </p>
+                <p>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: '8px', verticalAlign: 'middle'}}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  </svg>
+                  <strong>Location:</strong> {opp.location}
+                </p>
+                <p>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: '8px', verticalAlign: 'middle'}}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
+                  </svg>
+                  <strong>Stipend:</strong> {opp.stipend}
+                </p>
+                <p>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: '8px', verticalAlign: 'middle'}}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <strong>Duration:</strong> {opp.duration}
+                </p>
+                <p>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: '8px', verticalAlign: 'middle'}}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                  </svg>
+                  <strong>Applications:</strong> {opp.application_count || 0}
+                </p>
+                <p>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: '8px', verticalAlign: 'middle'}}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                  </svg>
+                  <strong>Closing:</strong> {new Date(opp.closing_date).toLocaleDateString()}
+                </p>
               </div>
               
                              <div className="opportunity-actions">
-                 <button className="btn btn-outline">View Details</button>
-                 <button 
-                   className="btn btn-outline"
-                   onClick={() => handleEditOpportunity(opp)}
-                   disabled={loadingEditOpportunity}
-                 >
-                   {loadingEditOpportunity ? 'Loading...' : 'Edit'}
-                 </button>
-                 <button 
-                   className="btn btn-primary"
-                   onClick={() => handleViewApplications(opp)}
-                 >
-                   View Applications ({opp.application_count || 0})
-                 </button>
-                 <button 
-                   className="btn btn-danger"
-                   onClick={() => handleDeleteOpportunity(opp)}
-                   disabled={loadingDelete}
-                 >
-                   {loadingDelete ? 'Deleting...' : 'Delete'}
-                 </button>
+                 <div className="primary-actions">
+                   <button className="btn btn-outline btn-view">
+                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                       <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                     </svg>
+                     View Details
+                   </button>
+                   <button 
+                     className="btn btn-outline btn-edit"
+                     onClick={() => handleEditOpportunity(opp)}
+                     disabled={loadingEditOpportunity}
+                   >
+                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                       <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                     </svg>
+                     {loadingEditOpportunity ? 'Loading...' : 'Edit'}
+                   </button>
+                 </div>
+                 <div className="danger-actions">
+                   <button 
+                     className="btn btn-danger btn-delete"
+                     onClick={() => handleDeleteOpportunity(opp)}
+                     disabled={loadingDelete}
+                     title={loadingDelete ? 'Deleting...' : 'Delete Opportunity'}
+                   >
+                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                     </svg>
+                     <span className="btn-text">{loadingDelete ? 'Deleting...' : 'Delete'}</span>
+                   </button>
+                 </div>
                </div>
             </div>
           ))}
@@ -665,16 +1019,21 @@ const IcmDashboard = () => {
           <div className="company-header">
             <div className="company-logo-section">
               <div className="company-logo">
-                <i className="fas fa-building"></i>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                </svg>
               </div>
               <div className="company-basic-info">
                 <h2>{icmProfile?.company?.name || 'Company Name'}</h2>
                 <p className="company-industry">{icmProfile?.company?.industryType || 'Industry'}</p>
-                <p className="company-location">📍 {icmProfile?.company?.headquartersLocation || 'Location'}</p>
+                <p className="company-location">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: '8px', verticalAlign: 'middle'}}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  </svg>
+                  {icmProfile?.company?.headquartersLocation || 'Location'}
+                </p>
                 <div className="company-status">
-                  <span className={`status-badge ${icmProfile?.recruitment?.hiringStatus === 'actively_hiring' ? 'hiring' : 'not-hiring'}`}>
-                    {icmProfile?.recruitment?.hiringStatus === 'actively_hiring' ? 'Actively Hiring' : 'Not Hiring'}
-                  </span>
                   <span className="company-size">{icmProfile?.company?.size || 'Company Size'}</span>
                 </div>
               </div>
@@ -683,19 +1042,31 @@ const IcmDashboard = () => {
               {editingProfile ? (
                 <>
                   <button className="btn btn-outline" onClick={handleCancelEdit}>
-                    <i className="fas fa-times"></i> Cancel
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                    Cancel
                   </button>
                   <button className="btn btn-primary" onClick={handleSaveProfile} disabled={profileLoading}>
-                    <i className="fas fa-save"></i> {profileLoading ? 'Saving...' : 'Save Profile'}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+                    </svg>
+                    {profileLoading ? 'Saving...' : 'Save Profile'}
                   </button>
                 </>
               ) : (
                 <>
                   <button className="btn btn-outline" onClick={handleEditProfile}>
-                    <i className="fas fa-edit"></i> Edit Profile
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                    Edit Profile
                   </button>
                   <button className="btn btn-primary" onClick={() => setShowOpportunityModal(true)}>
-                    <i className="fas fa-plus"></i> Post Opportunity
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                    </svg>
+                    Post Opportunity
                   </button>
                 </>
               )}
@@ -706,19 +1077,34 @@ const IcmDashboard = () => {
         {/* Profile Navigation Tabs */}
         <div className="profile-tabs">
           <button className={`tab-btn ${activeProfileTab === 'company' ? 'active' : ''}`} onClick={() => setActiveProfileTab('company')}>
-            <i className="fas fa-building"></i> Company Info
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+            </svg>
+            Company Info
           </button>
           <button className={`tab-btn ${activeProfileTab === 'culture' ? 'active' : ''}`} onClick={() => setActiveProfileTab('culture')}>
-            <i className="fas fa-heart"></i> Culture & Values
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+            </svg>
+            Culture & Values
           </button>
           <button className={`tab-btn ${activeProfileTab === 'recruitment' ? 'active' : ''}`} onClick={() => setActiveProfileTab('recruitment')}>
-            <i className="fas fa-users"></i> Recruitment
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
+            </svg>
+            Recruitment
           </button>
           <button className={`tab-btn ${activeProfileTab === 'highlights' ? 'active' : ''}`} onClick={() => setActiveProfileTab('highlights')}>
-            <i className="fas fa-trophy"></i> Highlights
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+            </svg>
+            Highlights
           </button>
           <button className={`tab-btn ${activeProfileTab === 'people' ? 'active' : ''}`} onClick={() => setActiveProfileTab('people')}>
-            <i className="fas fa-user-friends"></i> People
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+            People
           </button>
         </div>
 
@@ -1171,10 +1557,6 @@ const IcmDashboard = () => {
         <div className="recruitment-section">
           <h3><i className="fas fa-user-plus"></i> Hiring Status</h3>
           <div className="hiring-status">
-            <div className="status-indicator active">
-              <i className="fas fa-check-circle"></i>
-              <span>Actively Hiring</span>
-            </div>
             <p>We are currently seeking talented individuals to join our growing team across various departments.</p>
           </div>
         </div>
@@ -1501,6 +1883,142 @@ const IcmDashboard = () => {
     </div>
   );
 
+  const renderApplicationsTab = () => {
+    // Group applications by opportunity
+    const applicationsByOpportunity = {};
+    
+    // Use real data from API
+    const applicationsData = allApplications || [];
+
+    // Group applications by opportunity
+    applicationsData.forEach(app => {
+      const opportunityId = app.opportunity_id || app.opportunityId;
+      const opportunityTitle = app.opportunity_title || app.opportunityTitle || 'Unknown Opportunity';
+      
+      if (!applicationsByOpportunity[opportunityId]) {
+        applicationsByOpportunity[opportunityId] = {
+          opportunity_title: opportunityTitle,
+          applications: []
+        };
+      }
+      applicationsByOpportunity[opportunityId].applications.push(app);
+    });
+
+    return (
+      <div className="applications-tab">
+        <div className="tab-header">
+          <h2>All Applications</h2>
+          <p>Manage applications organized by opportunity</p>
+        </div>
+
+        {applicationsLoading ? (
+          <TrustTeamsLoader 
+            isLoading={true}
+            message="Loading applications..."
+            showProgress={false}
+            size="small"
+          />
+        ) : Object.keys(applicationsByOpportunity).length === 0 ? (
+          <div className="empty-state">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+            </svg>
+            <h3>No Applications Yet</h3>
+            <p>Applications will appear here once students start applying to your opportunities.</p>
+          </div>
+        ) : (
+          <div className="applications-by-opportunity">
+            {Object.entries(applicationsByOpportunity).map(([opportunityId, data]) => (
+              <div key={opportunityId} className="opportunity-applications-group">
+                <div className="opportunity-header">
+                  <h3>{data.opportunity_title}</h3>
+                  <span className="application-count">{data.applications.length} application{data.applications.length !== 1 ? 's' : ''}</span>
+                </div>
+                
+                <div className="applications-list">
+                  {data.applications.map((app) => {
+                    const studentName = app.student_name || app.studentName || app.name || 'Unknown Student';
+                    const studentEmail = app.student_email || app.studentEmail || app.email || 'No email provided';
+                    const applicationDate = app.application_date || app.applicationDate || app.created_at || app.createdAt || new Date().toISOString();
+                    const coverLetter = app.cover_letter || app.coverLetter || app.message || 'No cover letter provided';
+                    const applicationStatus = app.status || 'pending';
+                    const applicationId = app.id || app.application_id || app.applicationId;
+                    
+                    return (
+                      <div key={applicationId} className="application-card">
+                        <div className="application-header">
+                          <div className="student-info">
+                            <h4>{studentName}</h4>
+                            <p>{studentEmail}</p>
+                            <p className="application-date">Applied: {new Date(applicationDate).toLocaleDateString()}</p>
+                          </div>
+                          <span className={`status-badge ${applicationStatus}`}>
+                            {applicationStatus}
+                          </span>
+                        </div>
+                        
+                        <div className="application-details">
+                          <div className="cover-letter-preview">
+                            <strong>Cover Letter:</strong>
+                            <p>{coverLetter}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="application-actions">
+                          {applicationStatus === 'pending' ? (
+                            <>
+                              <button 
+                                className="btn btn-success"
+                                onClick={() => handleApproveApplication(applicationId)}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                Approve
+                              </button>
+                              <button 
+                                className="btn btn-danger"
+                                onClick={() => handleRejectApplication(applicationId)}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                                Reject
+                              </button>
+                            </>
+                          ) : (
+                            <span className={`status-badge ${applicationStatus}`}>
+                              {applicationStatus === 'approved' ? (
+                                <>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: '6px', verticalAlign: 'middle'}}>
+                                    <polyline points="20,6 9,17 4,12"/>
+                                  </svg>
+                                  Approved
+                                </>
+                              ) : (
+                                <>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: '6px', verticalAlign: 'middle'}}>
+                                    <line x1="18" y1="6" x2="6" y2="18"/>
+                                    <line x1="6" y1="6" x2="18" y2="18"/>
+                                  </svg>
+                                  Rejected
+                                </>
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'overview':
@@ -1509,6 +2027,8 @@ const IcmDashboard = () => {
         return renderUniversitiesTab();
       case 'opportunities':
         return renderOpportunitiesTab();
+      case 'applications':
+        return renderApplicationsTab();
       case 'profile':
         return renderProfileTab();
       default:
@@ -1621,6 +2141,14 @@ const IcmDashboard = () => {
 
   return (
     <div className={`icm-dashboard ${isDarkTheme ? 'dark' : 'light'}`}>
+      {/* TrustTeams Loading Bar */}
+      <TrustTeamsLoader 
+        isLoading={loading}
+        message="Loading dashboard..."
+        showProgress={false}
+        size="medium"
+      />
+      
       {/* Mobile Menu Toggle */}
       <button className="nav-toggle" onClick={handleMobileMenuToggle}>
         ☰
@@ -1641,7 +2169,9 @@ const IcmDashboard = () => {
             className={`nav-menu-item ${activeTab === 'overview' ? 'active' : ''}`}
             onClick={() => setActiveTab('overview')}
           >
-            <span className="nav-menu-item-icon dashboard"></span>
+            <svg className="nav-menu-item-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+            </svg>
             <span className="nav-menu-item-text">Dashboard</span>
           </a>
 
@@ -1650,7 +2180,9 @@ const IcmDashboard = () => {
             className={`nav-menu-item ${activeTab === 'opportunities' ? 'active' : ''}`}
             onClick={() => setActiveTab('opportunities')}
           >
-            <span className="nav-menu-item-icon opportunities"></span>
+            <svg className="nav-menu-item-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
             <span className="nav-menu-item-text">Opportunities</span>
           </a>
 
@@ -1659,15 +2191,21 @@ const IcmDashboard = () => {
             className={`nav-menu-item ${activeTab === 'universities' ? 'active' : ''}`}
             onClick={() => setActiveTab('universities')}
           >
-            <span className="nav-menu-item-icon universities"></span>
+            <svg className="nav-menu-item-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+            </svg>
             <span className="nav-menu-item-text">Universities</span>
           </a>
 
           <a 
             href="#applications"
-            className="nav-menu-item"
+            className={`nav-menu-item ${activeTab === 'applications' ? 'active' : ''}`}
+            onClick={() => setActiveTab('applications')}
           >
-            <span className="nav-menu-item-icon applications"></span>
+            <svg className="nav-menu-item-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+            </svg>
             <span className="nav-menu-item-text">Applications</span>
             <span className="nav-menu-item-badge">1</span>
           </a>
@@ -1677,25 +2215,20 @@ const IcmDashboard = () => {
             className={`nav-menu-item ${activeTab === 'profile' ? 'active' : ''}`}
             onClick={() => setActiveTab('profile')}
           >
-            <span className="nav-menu-item-icon profile"></span>
+            <svg className="nav-menu-item-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+            </svg>
             <span className="nav-menu-item-text">Profile</span>
           </a>
         </div>
 
         {/* Bottom Section */}
         <div className="nav-bottom">
-          {/* Theme Toggle */}
-          <div className="theme-toggle" onClick={handleThemeToggle}>
-            <div className="theme-toggle-text">
-              <span className="theme-toggle-icon">🌙</span>
-              {isDarkTheme ? 'Light Mode' : 'Dark Mode'}
-            </div>
-            <div className={`theme-toggle-switch ${isDarkTheme ? 'active' : ''}`}></div>
-          </div>
-
           {/* Logout Button */}
           <button className="nav-logout" onClick={handleLogout}>
-            <span className="nav-logout-icon">🚪</span>
+            <svg className="nav-logout-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            </svg>
             Logout
           </button>
         </div>
@@ -1709,6 +2242,26 @@ const IcmDashboard = () => {
 
       {/* Main Content */}
       <main className="main-content">
+        {/* Dashboard Header */}
+        <div className="dashboard-header">
+          <div className="header-content">
+            <h1>ICM Dashboard</h1>
+            <p>Industry Collaboration Manager</p>
+          </div>
+          <div className="header-icons">
+            {/* Theme Toggle */}
+            <div className="header-theme-toggle" onClick={handleThemeToggle}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                {isDarkTheme ? (
+                  <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                ) : (
+                  <path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                )}
+              </svg>
+              <span className="text">{isDarkTheme ? 'Light' : 'Dark'}</span>
+            </div>
+          </div>
+        </div>
         {renderTabContent()}
       </main>
 
@@ -1778,7 +2331,13 @@ const IcmDashboard = () => {
                      className={`type-tab ${opportunityForm.type === 'job' ? 'active' : ''}`}
                      onClick={() => setOpportunityForm({...opportunityForm, type: 'job'})}
                    >
-                     <span className="type-icon">💼</span>
+                     <span className="type-icon">
+                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                         <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                         <line x1="8" y1="21" x2="16" y2="21"/>
+                         <line x1="12" y1="17" x2="12" y2="21"/>
+                       </svg>
+                     </span>
                      Job
                    </button>
                    <button
@@ -1786,7 +2345,10 @@ const IcmDashboard = () => {
                      className={`type-tab ${opportunityForm.type === 'internship' ? 'active' : ''}`}
                      onClick={() => setOpportunityForm({...opportunityForm, type: 'internship'})}
                    >
-                     <span className="type-icon">🎓</span>
+                     <svg className="type-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/>
+                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+                     </svg>
                      Internship
                    </button>
                    <button
@@ -1794,7 +2356,14 @@ const IcmDashboard = () => {
                      className={`type-tab ${opportunityForm.type === 'project' ? 'active' : ''}`}
                      onClick={() => setOpportunityForm({...opportunityForm, type: 'project'})}
                    >
-                     <span className="type-icon">🚀</span>
+                     <span className="type-icon">
+                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                         <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+                         <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+                         <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
+                         <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+                       </svg>
+                     </span>
                      Project
                    </button>
                  </div>
@@ -1993,7 +2562,9 @@ const IcmDashboard = () => {
                    </button>
                  ) : (
                    <button type="submit" className="btn btn-primary">
-                     <span className="btn-icon">📝</span>
+                     <svg className="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
+                     </svg>
                      Post Opportunity
                    </button>
                  )}
@@ -2037,7 +2608,13 @@ const IcmDashboard = () => {
                      className={`type-tab ${opportunityForm.type === 'job' ? 'active' : ''}`}
                      onClick={() => setOpportunityForm({...opportunityForm, type: 'job'})}
                    >
-                     <span className="type-icon">💼</span>
+                     <span className="type-icon">
+                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                         <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                         <line x1="8" y1="21" x2="16" y2="21"/>
+                         <line x1="12" y1="17" x2="12" y2="21"/>
+                       </svg>
+                     </span>
                      Job
                    </button>
                    <button
@@ -2045,7 +2622,10 @@ const IcmDashboard = () => {
                      className={`type-tab ${opportunityForm.type === 'internship' ? 'active' : ''}`}
                      onClick={() => setOpportunityForm({...opportunityForm, type: 'internship'})}
                    >
-                     <span className="type-icon">🎓</span>
+                     <svg className="type-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/>
+                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+                     </svg>
                      Internship
                    </button>
                    <button
@@ -2053,7 +2633,14 @@ const IcmDashboard = () => {
                      className={`type-tab ${opportunityForm.type === 'project' ? 'active' : ''}`}
                      onClick={() => setOpportunityForm({...opportunityForm, type: 'project'})}
                    >
-                     <span className="type-icon">🚀</span>
+                     <span className="type-icon">
+                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                         <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+                         <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+                         <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
+                         <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+                       </svg>
+                     </span>
                      Project
                    </button>
                  </div>
@@ -2240,7 +2827,9 @@ const IcmDashboard = () => {
                    Cancel
                  </button>
                  <button type="submit" className="btn btn-primary">
-                   <span className="btn-icon">💾</span>
+                   <svg className="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+                   </svg>
                    Update Opportunity
                  </button>
                </div>
@@ -2264,7 +2853,9 @@ const IcmDashboard = () => {
              </div>
              
              <div className="delete-content">
-               <div className="warning-icon">⚠️</div>
+               <svg className="warning-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+               </svg>
                <h4>Are you sure you want to delete this opportunity?</h4>
                <p><strong>"{deletingOpportunity.title}"</strong></p>
                <p className="warning-text">
@@ -2368,18 +2959,40 @@ const IcmDashboard = () => {
                               className="btn btn-success" 
                               onClick={() => handleApproveApplication(app.id)}
                             >
-                              ✅ Approve
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: '6px', verticalAlign: 'middle'}}>
+                                <polyline points="20,6 9,17 4,12"/>
+                              </svg>
+                              Approve
                             </button>
                             <button 
                               className="btn btn-danger" 
                               onClick={() => handleRejectApplication(app.id)}
                             >
-                              ❌ Reject
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: '6px', verticalAlign: 'middle'}}>
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                              </svg>
+                              Reject
                             </button>
                           </>
                         ) : (
                           <span className={`status-badge ${app.status}`}>
-                            {app.status === 'approved' ? '✅ Approved' : '❌ Rejected'}
+                            {app.status === 'approved' ? (
+                              <>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: '6px', verticalAlign: 'middle'}}>
+                                  <polyline points="20,6 9,17 4,12"/>
+                                </svg>
+                                Approved
+                              </>
+                            ) : (
+                              <>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: '6px', verticalAlign: 'middle'}}>
+                                  <line x1="18" y1="6" x2="6" y2="18"/>
+                                  <line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
+                                Rejected
+                              </>
+                            )}
                           </span>
                         )}
                       </div>
@@ -2388,7 +3001,9 @@ const IcmDashboard = () => {
                 </div>
               ) : (
                 <div className="no-applications">
-                  <span>📋</span>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                  </svg>
                   <h4>No Applications Yet</h4>
                   <p>Applications for this opportunity will appear here once students start applying.</p>
                 </div>
@@ -2416,7 +3031,12 @@ const IcmDashboard = () => {
               <div className="profile-sections">
                 {/* Basic Information */}
                 <div className="profile-section">
-                  <h4><span>👤</span> Basic Information</h4>
+                  <h4>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                    Basic Information
+                  </h4>
                   <div className="info-grid">
                     <div className="info-item">
                       <strong>Name:</strong>
@@ -2457,7 +3077,13 @@ const IcmDashboard = () => {
                 {/* Skills */}
                 {studentProfile.skills && studentProfile.skills.length > 0 && (
                   <div className="profile-section">
-                    <h4><span>🛠️</span> Skills</h4>
+                    <h4>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                      </svg>
+                      Skills
+                    </h4>
                     <div className="skills-grid">
                       {studentProfile.skills.map((skill, index) => (
                         <div key={index} className="skill-item">
@@ -2497,7 +3123,16 @@ const IcmDashboard = () => {
                 {/* Experience */}
                 {studentProfile.experience && studentProfile.experience.length > 0 && (
                   <div className="profile-section">
-                    <h4><span>💼</span> Work Experience</h4>
+                    <h4>
+                      <span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: '8px', verticalAlign: 'middle'}}>
+                          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                          <line x1="8" y1="21" x2="16" y2="21"/>
+                          <line x1="12" y1="17" x2="12" y2="21"/>
+                        </svg>
+                      </span>
+                      Work Experience
+                    </h4>
                     <div className="experience-list">
                       {studentProfile.experience.map((exp, index) => (
                         <div key={index} className="experience-item">
@@ -2518,7 +3153,17 @@ const IcmDashboard = () => {
                 {/* Projects */}
                 {studentProfile.projects && studentProfile.projects.length > 0 && (
                   <div className="profile-section">
-                    <h4><span>🚀</span> Projects</h4>
+                    <h4>
+                      <span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: '8px', verticalAlign: 'middle'}}>
+                          <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+                          <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+                          <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
+                          <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+                        </svg>
+                      </span>
+                      Projects
+                    </h4>
                     <div className="projects-list">
                       {studentProfile.projects.map((project, index) => (
                         <div key={index} className="project-item">
@@ -2536,7 +3181,11 @@ const IcmDashboard = () => {
                           )}
                           {project.project_url && (
                             <a href={project.project_url} target="_blank" rel="noopener noreferrer" className="project-link">
-                              🔗 View Project
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: '6px', verticalAlign: 'middle'}}>
+                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                              </svg>
+                              View Project
                             </a>
                           )}
                         </div>
@@ -2548,7 +3197,12 @@ const IcmDashboard = () => {
                 {/* Applications to ICM Opportunities */}
                 {studentProfile.applications && studentProfile.applications.length > 0 && (
                   <div className="profile-section">
-                    <h4><span>📋</span> Applications to Your Opportunities</h4>
+                    <h4>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                      </svg>
+                      Applications to Your Opportunities
+                    </h4>
                     <div className="applications-list">
                       {studentProfile.applications.map((app, index) => (
                         <div key={index} className="application-item">
