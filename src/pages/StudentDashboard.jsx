@@ -2050,35 +2050,74 @@ const StudentDashboard = () => {
 
       {/* Main Content */}
       <main className="main-content">
-      <div className="dashboard-header animated">
-        <div className="header-content">
-          <div className="header-text">
-            <div className="header-greeting">
-              <div className="greet-avatar">{(user?.name || 'S').charAt(0).toUpperCase()}</div>
-              <div>
-                <h1>Welcome back{user?.name ? `, ${user.name.split(' ')[0]}` : ''}</h1>
-                <p>Here's what's happening with your opportunities and growth.</p>
+        {/* Professional Header */}
+        <header className="professional-header">
+          <div className="header-container">
+            {/* Left Section - Logo/College Name */}
+            <div className="header-left">
+              <div className="college-info">
+                <h1 className="college-name">Skn Sinhgad College Of Engineering, Pandharpur</h1>
               </div>
             </div>
-          </div>
+
+            {/* Right Section - User Actions */}
+            <div className="header-right">
           <div className="header-actions">
-            <div className="header-icons">
-              {/* Theme Toggle */}
-              <div className="header-theme-toggle" onClick={handleThemeToggle}>
-                <span className="theme-toggle-icon">
-                  {isDarkTheme ? '☀️' : '🌙'}
-                </span>
-                <span className="header-theme-toggle-text">
-                  {isDarkTheme ? 'Light Mode' : 'Dark Mode'}
-                </span>
+                {/* Person Icon */}
+                <button className="header-icon-btn" title="Profile">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                  </svg>
+                </button>
+
+                {/* Calendar Icon */}
+                <button className="header-icon-btn" title="Calendar">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+                    <line x1="16" x2="16" y1="2" y2="6"/>
+                    <line x1="8" x2="8" y1="2" y2="6"/>
+                    <line x1="3" x2="21" y1="10" y2="10"/>
+                  </svg>
+                </button>
+
+                {/* Messages Icon with Badge */}
+                <div className="dropdown">
+                  <button className="header-icon-btn" title="Messages" onClick={()=>{ setShowMsgs(v=>!v); setShowNotif(false); }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    {messageItems.filter(m=>!m.read).length > 0 && <span className="notification-badge">{messageItems.filter(m=>!m.read).length}</span>}
+                  </button>
+                  {showMsgs && (
+                    <div className="dropdown-menu">
+                      {messageItems.length === 0 ? (
+                        <div className="dropdown-empty">No messages</div>
+                      ) : messageItems.map(m => (
+                        <div key={m.id} className={`dropdown-item ${m.read ? '' : 'unread'}`} onClick={()=>{
+                          setMessageItems(prev=>{ const next=prev.map(x=>x.id===m.id?{...x, read:true}:x); localStorage.setItem('tt_messages', JSON.stringify(next)); return next; });
+                        }}>
+                          <div className="item-text"><strong>{m.from}:</strong> {m.preview}</div>
+                          <div className="item-time">{new Date(m.at).toLocaleString()}</div>
+                        </div>
+                      ))}
+                      {messageItems.length>0 && (
+                        <div className="dropdown-actions">
+                          <button className="btn btn-secondary" onClick={()=>{ setMessageItems(prev=>{ const next=prev.map(x=>({...x, read:true})); localStorage.setItem('tt_messages', JSON.stringify(next)); return next; }); }}>Mark all read</button>
+                        </div>
+                      )}
+                    </div>
+                  )}
               </div>
               
+                {/* Notifications Icon with Badge */}
               <div className="dropdown">
-                <button className="icon-btn" title="Notifications" onClick={()=>{ setShowNotif(v=>!v); setShowMsgs(false); }}>
+                  <button className="header-icon-btn" title="Notifications" onClick={()=>{ setShowNotif(v=>!v); setShowMsgs(false); }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/>
                   <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
-                </svg> {notificationItems.filter(n=>!n.read).length > 0 && <span className="badge-count">{notificationItems.filter(n=>!n.read).length}</span>}
+                    </svg>
+                    {notificationItems.filter(n=>!n.read).length > 0 && <span className="notification-badge">{notificationItems.filter(n=>!n.read).length}</span>}
                 </button>
                 {showNotif && (
                   <div className="dropdown-menu">
@@ -2100,35 +2139,31 @@ const StudentDashboard = () => {
                   </div>
                 )}
               </div>
-              <div className="dropdown">
-                <button className="icon-btn" title="Messages" onClick={()=>{ setShowMsgs(v=>!v); setShowNotif(false); }}>
-                  <MailIcon /> {messageItems.filter(m=>!m.read).length > 0 && <span className="badge-count">{messageItems.filter(m=>!m.read).length}</span>}
-                </button>
-                {showMsgs && (
-                  <div className="dropdown-menu">
-                    {messageItems.length === 0 ? (
-                      <div className="dropdown-empty">No messages</div>
-                    ) : messageItems.map(m => (
-                      <div key={m.id} className={`dropdown-item ${m.read ? '' : 'unread'}`} onClick={()=>{
-                        setMessageItems(prev=>{ const next=prev.map(x=>x.id===m.id?{...x, read:true}:x); localStorage.setItem('tt_messages', JSON.stringify(next)); return next; });
-                      }}>
-                        <div className="item-text"><strong>{m.from}:</strong> {m.preview}</div>
-                        <div className="item-time">{new Date(m.at).toLocaleString()}</div>
-                      </div>
-                    ))}
-                    {messageItems.length>0 && (
-                      <div className="dropdown-actions">
-                        <button className="btn btn-secondary" onClick={()=>{ setMessageItems(prev=>{ const next=prev.map(x=>({...x, read:true})); localStorage.setItem('tt_messages', JSON.stringify(next)); return next; }); }}>Mark all read</button>
-                      </div>
+
+                {/* User Profile Section */}
+                <div className="user-profile-section">
+                  <div className="user-avatar">
+                    {profileImageUrl ? (
+                      <img 
+                        src={profileImageUrl} 
+                        alt={`${user?.name || 'Student'} profile picture`}
+                        className="avatar-image"
+                      />
+                    ) : (
+                      <span className="avatar-initials">{(user?.name || 'S').charAt(0).toUpperCase()}</span>
                     )}
                   </div>
-                )}
+                  <div className="user-info">
+                    <span className="user-name">{user?.name || 'Student'}</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="dropdown-arrow">
+                      <polyline points="6,9 12,15 18,9"/>
+                    </svg>
               </div>
-
             </div>
           </div>
         </div>
       </div>
+        </header>
 
         {/* Dashboard Content */}
         <div className="dashboard-content">

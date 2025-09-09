@@ -1,24 +1,14 @@
-// 🚨 SMART API CONFIGURATION - DO NOT CHANGE THIS SECTION 🚨
-// This automatically detects environment and uses the correct backend
+// 🚨 DIRECT API CONFIGURATION - ALWAYS USE VERCEL BACKEND 🚨
+// This configuration directly uses the Vercel backend for all environments
 
-       // Check if we're running locally
-       const isLocalDevelopment = window.location.hostname === 'localhost' || 
-                                 window.location.hostname === '127.0.0.1' ||
-                                 window.location.port === '5173' ||
-                                 window.location.port === '3000'
-       
-               // Use local backend for development, production backend for Vercel
-        const API_BASE_URL = isLocalDevelopment 
-          ? 'http://localhost:3001/api'                    // LOCAL DEVELOPMENT (correct port)
-          : 'https://trustteams-backend.vercel.app/api'    // PRODUCTION
+const API_BASE_URL = 'https://trustteams-backend.vercel.app/api'
 
-// 🚨 SMART DEBUG LOGGING - DO NOT CHANGE THIS SECTION 🚨
-console.log('🚨 SMART API CONFIGURATION:', {
+// 🚨 DIRECT BACKEND LOGGING 🚨
+console.log('🚨 DIRECT API CONFIGURATION:', {
   API_BASE_URL,
   HOSTNAME: window.location.hostname,
   PORT: window.location.port,
-  IS_LOCAL_DEVELOPMENT: isLocalDevelopment,
-  MESSAGE: isLocalDevelopment ? 'Using LOCAL backend' : 'Using PRODUCTION backend'
+  MESSAGE: 'Using VERCEL backend for all environments'
 })
 
 // API endpoints
