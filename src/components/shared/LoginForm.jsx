@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '../../config/api.js'
-import './LoginForm.css'
+import '../../styles/auth-design-system.css'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -12,8 +12,72 @@ export default function LoginForm({ onSubmit }) {
   const [error, setError] = useState('')
   const [userType, setUserType] = useState('student') // default to student
   const [passwordStrength, setPasswordStrength] = useState(0)
+  const [showRoleDropdown, setShowRoleDropdown] = useState(false)
+  const [focusedIndex, setFocusedIndex] = useState(-1)
   const navigate = useNavigate()
   const { login, getDashboardPath } = useAuth()
+
+  const roleOptions = [
+    { value: 'student', label: 'Student', icon: '👨‍🎓' },
+    { value: 'icm', label: 'Industry Collaboration Manager', icon: '🏭' },
+    { value: 'academic', label: 'Academic Leader', icon: '🎓' },
+    { value: 'university', label: 'University Admin', icon: '🏛️' },
+    { value: 'platform_admin', label: 'Platform Admin', icon: '⚙️' }
+  ]
+
+  const selectedRole = roleOptions.find(role => role.value === userType)
+  const dropdownRef = useRef(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowRoleDropdown(false)
+        setFocusedIndex(-1)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
+  // Handle keyboard navigation
+  const handleKeyDown = (e) => {
+    if (!showRoleDropdown) {
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+        e.preventDefault()
+        setShowRoleDropdown(true)
+        setFocusedIndex(0)
+      }
+      return
+    }
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        setFocusedIndex(prev => (prev + 1) % roleOptions.length)
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        setFocusedIndex(prev => prev <= 0 ? roleOptions.length - 1 : prev - 1)
+        break
+      case 'Enter':
+        e.preventDefault()
+        if (focusedIndex >= 0) {
+          setUserType(roleOptions[focusedIndex].value)
+          setShowRoleDropdown(false)
+          setFocusedIndex(-1)
+        }
+        break
+      case 'Escape':
+        e.preventDefault()
+        setShowRoleDropdown(false)
+        setFocusedIndex(-1)
+        break
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -154,148 +218,176 @@ export default function LoginForm({ onSubmit }) {
   const panelContent = getPanelContent()
 
   return (
-    <div className="login-page">
-      <aside className="brand-panel">
-        <div className="brand-content">
-          <div className="logo-mark" aria-hidden>{panelContent.logo}</div>
-          <h2>{panelContent.title}</h2>
-          <p>{panelContent.description}</p>
-          <ul className="highlights">
+    <div className="auth-page">
+      {/* Left Side - Brand Panel */}
+      <div className="auth-brand-panel">
+        <div className="auth-brand-content">
+          <div className="auth-logo-mark" aria-hidden>{panelContent.logo}</div>
+          <h1 className="auth-brand-title">{panelContent.title}</h1>
+          <p className="auth-brand-subtitle">{panelContent.description}</p>
+          <ul className="auth-highlights">
             {panelContent.highlights.map((highlight, index) => (
               <li key={index}>{highlight}</li>
             ))}
           </ul>
         </div>
-      </aside>
-      <main className="form-panel">
-        <div className="login-card">
-          <div className="login-header">
-            <h1>Welcome back</h1>
-            <p className="subtitle">Sign in to continue</p>
+      </div>
+
+      {/* Right Side - Form Panel */}
+      <div className="auth-form-panel">
+        <div className="auth-form-card">
+          <div className="auth-form-header">
+            <h1 className="auth-form-title">Welcome back</h1>
+            <p className="auth-form-subtitle">Sign in to continue</p>
           </div>
 
-          {/* User type selector */}
-          <div className="user-type-selector" style={{ marginBottom: 16 }}>
-            <button
-              type="button"
-              className={`type-btn ${userType === 'icm' ? 'active' : ''}`}
-              onClick={() => setUserType('icm')}
-            >
-              <span className="type-icon">🏭</span>
-              <span className="type-text">Industry Collaboration Manager</span>
-            </button>
-            <button
-              type="button"
-              className={`type-btn ${userType === 'student' ? 'active' : ''}`}
-              onClick={() => setUserType('student')}
-            >
-              <span className="type-icon">👨‍🎓</span>
-              <span className="type-text">Student</span>
-            </button>
-            <button
-              type="button"
-              className={`type-btn ${userType === 'academic' ? 'active' : ''}`}
-              onClick={() => setUserType('academic')}
-            >
-              <span className="type-icon">🎓</span>
-              <span className="type-text">Academic Leader</span>
-            </button>
-            <button
-              type="button"
-              className={`type-btn ${userType === 'university' ? 'active' : ''}`}
-              onClick={() => setUserType('university')}
-            >
-              <span className="type-icon">🏛️</span>
-              <span className="type-text">University Admin</span>
-            </button>
-            <button
-              type="button"
-              className={`type-btn ${userType === 'platform_admin' ? 'active' : ''}`}
-              onClick={() => setUserType('platform_admin')}
-            >
-              <span className="type-icon">⚙️</span>
-              <span className="type-text">Platform Admin</span>
-            </button>
+          {/* Role Dropdown */}
+          <div className="auth-field">
+            <label className="auth-label">Select your role</label>
+            <div className="auth-dropdown-container" ref={dropdownRef}>
+              <button
+                type="button"
+                className="auth-dropdown-button"
+                onClick={() => setShowRoleDropdown(!showRoleDropdown)}
+                onKeyDown={handleKeyDown}
+                aria-expanded={showRoleDropdown}
+                aria-haspopup="listbox"
+              >
+                <span className="auth-dropdown-icon">{selectedRole?.icon}</span>
+                <span className="auth-dropdown-text">{selectedRole?.label}</span>
+                <span className={`auth-dropdown-arrow ${showRoleDropdown ? 'open' : ''}`}>▼</span>
+              </button>
+              
+              {showRoleDropdown && (
+                <div className="auth-dropdown-menu" role="listbox">
+                  {roleOptions.map((role, index) => (
+                    <button
+                      key={role.value}
+                      type="button"
+                      className={`auth-dropdown-item ${userType === role.value ? 'selected' : ''} ${focusedIndex === index ? 'focused' : ''}`}
+                      onClick={() => {
+                        setUserType(role.value)
+                        setShowRoleDropdown(false)
+                        setFocusedIndex(-1)
+                      }}
+                      onKeyDown={handleKeyDown}
+                      role="option"
+                      aria-selected={userType === role.value}
+                    >
+                      <span className="auth-dropdown-item-icon">{role.icon}</span>
+                      <span className="auth-dropdown-item-text">{role.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          <form className="login-form" onSubmit={handleSubmit}>
-            <label className="field">
-              <span>Email</span>
+          <form className="auth-form" onSubmit={handleSubmit}>
+            <div className="auth-field">
+              <label className="auth-label">Email</label>
               <input
                 type="email"
+                className="auth-input"
                 placeholder="you@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
-            </label>
+            </div>
 
-            <label className="field">
-              <span>Password</span>
-              <div className="password-wrap">
+            <div className="auth-field">
+              <label className="auth-label">Password</label>
+              <div className="auth-password-field">
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  className="auth-input"
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => { setPassword(e.target.value); evaluateStrength(e.target.value) }}
+                  onChange={(e) => { 
+                    setPassword(e.target.value); 
+                    evaluateStrength(e.target.value) 
+                  }}
                   required
                 />
                 <button
                   type="button"
-                  className="toggle"
+                  className="auth-password-toggle"
                   onClick={() => setShowPassword(s => !s)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? 'Hide' : 'Show'}
+                  {showPassword ? '👁️‍🗨️' : '👁️'}
                 </button>
               </div>
-            </label>
+            </div>
 
-            {error && <div className="error" role="alert">{error}</div>}
-
-            {userType === 'student' && (
-              <div style={{ color:'#cbd5e1', fontSize:12, marginTop:6 }}>Tip: Use at least 8 chars with a number or symbol.</div>
+            {/* Password Strength Indicator */}
+            {passwordStrength > 0 && (
+              <div className="auth-password-strength">
+                <div className="auth-strength-bar">
+                  <div className={`auth-strength-fill ${
+                    passwordStrength === 1 ? 'weak' : 
+                    passwordStrength === 2 ? 'medium' : 'strong'
+                  }`}></div>
+                </div>
+                <div className="auth-strength-text">
+                  {passwordStrength === 1 ? 'Weak password' : 
+                   passwordStrength === 2 ? 'Medium strength' : 'Strong password'}
+                </div>
+              </div>
             )}
 
-            <div className={`strength s${passwordStrength}`} aria-hidden>
-              <div className="bar" />
-              <div className="bar" />
-              <div className="bar" />
-            </div>
+            {/* Error Message */}
+            {error && (
+              <div className="auth-error" role="alert">
+                {error}
+              </div>
+            )}
 
-            <button type="submit" className="submit" disabled={loading}>
-              {loading ? 'Signing in…' : `Sign in as ${userType === 'student' ? 'Student' : userType === 'academic' ? 'Academic Leader' : userType === 'university' ? 'University Admin' : userType === 'platform_admin' ? 'Platform Admin/Admin' : 'ICM'}`}
+            {/* Password Tip for Students */}
+            {userType === 'student' && (
+              <div style={{ 
+                color: 'var(--auth-text-secondary)', 
+                fontSize: 'var(--auth-body-small-size)', 
+                marginTop: 'var(--auth-spacing-8)',
+                textAlign: 'center'
+              }}>
+                Tip: Use at least 8 characters with uppercase, lowercase, and numbers
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <button 
+              type="submit" 
+              className={`auth-submit-btn ${loading ? 'auth-loading' : ''}`}
+              disabled={loading}
+            >
+              {loading && <span className="auth-spinner"></span>}
+              {loading ? 'Signing in...' : `Sign in as ${userType === 'student' ? 'Student' : userType === 'academic' ? 'Academic Leader' : userType === 'university' ? 'University Admin' : userType === 'platform_admin' ? 'Platform Admin' : 'ICM'}`}
             </button>
-
-            <div className="meta">
-              <label className="remember">
-                <input type="checkbox" />
-                <span>Remember me</span>
-              </label>
-              <a className="link" href="#">Forgot password?</a>
-            </div>
           </form>
-          <div className="footer-note">
-            <span>New here?</span>
-            <a className="link" href="/signup">Create an account</a>
-          </div>
-          
-          {/* Demo credentials */}
+
+
+          {/* Footer Links */}
           <div style={{ 
-            marginTop: 'var(--spacing-4)', 
-            padding: 'var(--spacing-3)', 
-            background: 'var(--surface)', 
-            borderRadius: 'var(--radius-md)',
-            fontSize: 'var(--font-size-sm)',
-            color: 'var(--text-muted)'
+            marginTop: 'var(--auth-spacing-24)', 
+            textAlign: 'center',
+            fontSize: 'var(--auth-body-small-size)',
+            color: 'var(--auth-text-secondary)'
           }}>
-            <strong>Demo Accounts:</strong><br/>
-            Admin: admin@trustteams.com / admin123<br/>
-            Manager: manager@trustteams.com / manager123<br/>
-            Viewer: viewer@trustteams.com / viewer123
+            <span>New here? </span>
+            <a 
+              href="/signup" 
+              style={{ 
+                color: 'var(--auth-input-focus)', 
+                textDecoration: 'none' 
+              }}
+            >
+              Create an account
+            </a>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   )
 }
