@@ -178,7 +178,7 @@ const ServerHealthMonitor = () => {
       <div className="server-health-monitor">
         <div className="loading-spinner">
           <div className="spinner"></div>
-          <p>Loading server health data...</p>
+          <p>Loading...</p>
         </div>
       </div>
     )

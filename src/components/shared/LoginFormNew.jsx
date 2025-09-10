@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '../../config/api.js'
 import '../../styles/auth-design-system.css'
 import { useNavigate } from 'react-router-dom'
@@ -12,8 +12,72 @@ export default function LoginFormNew({ onSubmit }) {
   const [error, setError] = useState('')
   const [userType, setUserType] = useState('student')
   const [passwordStrength, setPasswordStrength] = useState(0)
+  const [showRoleDropdown, setShowRoleDropdown] = useState(false)
+  const [focusedIndex, setFocusedIndex] = useState(-1)
   const navigate = useNavigate()
   const { login, getDashboardPath } = useAuth()
+
+  const roleOptions = [
+    { value: 'student', label: 'Student', icon: '👨‍🎓' },
+    { value: 'icm', label: 'Industry Collaboration Manager', icon: '🏭' },
+    { value: 'academic', label: 'Academic Leader', icon: '🎓' },
+    { value: 'university', label: 'University Admin', icon: '🏛️' },
+    { value: 'platform_admin', label: 'Platform Admin', icon: '⚙️' }
+  ]
+
+  const selectedRole = roleOptions.find(role => role.value === userType)
+  const dropdownRef = useRef(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowRoleDropdown(false)
+        setFocusedIndex(-1)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
+  // Handle keyboard navigation
+  const handleKeyDown = (e) => {
+    if (!showRoleDropdown) {
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+        e.preventDefault()
+        setShowRoleDropdown(true)
+        setFocusedIndex(0)
+      }
+      return
+    }
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        setFocusedIndex(prev => (prev + 1) % roleOptions.length)
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        setFocusedIndex(prev => prev <= 0 ? roleOptions.length - 1 : prev - 1)
+        break
+      case 'Enter':
+        e.preventDefault()
+        if (focusedIndex >= 0) {
+          setUserType(roleOptions[focusedIndex].value)
+          setShowRoleDropdown(false)
+          setFocusedIndex(-1)
+        }
+        break
+      case 'Escape':
+        e.preventDefault()
+        setShowRoleDropdown(false)
+        setFocusedIndex(-1)
+        break
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -191,43 +255,46 @@ export default function LoginFormNew({ onSubmit }) {
             <p className="auth-form-subtitle">Sign in to continue</p>
           </div>
 
-          {/* User Type Selector */}
-          <div className="auth-user-type-selector">
-            <button
-              type="button"
-              className={`auth-type-btn ${userType === 'icm' ? 'active' : ''}`}
-              onClick={() => setUserType('icm')}
-            >
-              Industry Collaboration Manager
-            </button>
-            <button
-              type="button"
-              className={`auth-type-btn ${userType === 'student' ? 'active' : ''}`}
-              onClick={() => setUserType('student')}
-            >
-              Student
-            </button>
-            <button
-              type="button"
-              className={`auth-type-btn ${userType === 'academic' ? 'active' : ''}`}
-              onClick={() => setUserType('academic')}
-            >
-              Academic Leader
-            </button>
-            <button
-              type="button"
-              className={`auth-type-btn ${userType === 'university' ? 'active' : ''}`}
-              onClick={() => setUserType('university')}
-            >
-              University Admin
-            </button>
-            <button
-              type="button"
-              className={`auth-type-btn ${userType === 'platform_admin' ? 'active' : ''}`}
-              onClick={() => setUserType('platform_admin')}
-            >
-              Platform Admin
-            </button>
+          {/* Role Dropdown */}
+          <div className="auth-field">
+            <label className="auth-label">Select your role</label>
+            <div className="auth-dropdown-container" ref={dropdownRef}>
+              <button
+                type="button"
+                className="auth-dropdown-button"
+                onClick={() => setShowRoleDropdown(!showRoleDropdown)}
+                onKeyDown={handleKeyDown}
+                aria-expanded={showRoleDropdown}
+                aria-haspopup="listbox"
+              >
+                <span className="auth-dropdown-icon">{selectedRole?.icon}</span>
+                <span className="auth-dropdown-text">{selectedRole?.label}</span>
+                <span className={`auth-dropdown-arrow ${showRoleDropdown ? 'open' : ''}`}>▼</span>
+              </button>
+              
+              {showRoleDropdown && (
+                <div className="auth-dropdown-menu" role="listbox">
+                  {roleOptions.map((role, index) => (
+                    <button
+                      key={role.value}
+                      type="button"
+                      className={`auth-dropdown-item ${userType === role.value ? 'selected' : ''} ${focusedIndex === index ? 'focused' : ''}`}
+                      onClick={() => {
+                        setUserType(role.value)
+                        setShowRoleDropdown(false)
+                        setFocusedIndex(-1)
+                      }}
+                      onKeyDown={handleKeyDown}
+                      role="option"
+                      aria-selected={userType === role.value}
+                    >
+                      <span className="auth-dropdown-item-icon">{role.icon}</span>
+                      <span className="auth-dropdown-item-text">{role.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <form className="auth-form" onSubmit={handleSubmit}>
@@ -309,21 +376,6 @@ export default function LoginFormNew({ onSubmit }) {
               {loading ? 'Signing in...' : `Sign in as ${userType === 'student' ? 'Student' : userType === 'academic' ? 'Academic Leader' : userType === 'university' ? 'University Admin' : userType === 'platform_admin' ? 'Platform Admin' : 'ICM'}`}
             </button>
 
-            {/* Demo Credentials */}
-            <div style={{ 
-              marginTop: 'var(--auth-spacing-24)', 
-              padding: 'var(--auth-spacing-16)', 
-              background: 'rgba(255, 255, 255, 0.05)', 
-              borderRadius: 'var(--auth-radius-input)',
-              fontSize: 'var(--auth-body-small-size)',
-              color: 'var(--auth-text-secondary)',
-              textAlign: 'center'
-            }}>
-              <strong>Demo Accounts:</strong><br/>
-              Admin: admin@trustteams.com / admin123<br/>
-              Manager: manager@trustteams.com / manager123<br/>
-              Viewer: viewer@trustteams.com / viewer123
-            </div>
           </form>
 
           {/* Footer Links */}

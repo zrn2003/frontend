@@ -246,8 +246,11 @@ const UserPermissionsManager = () => {
     return (
       <div className="user-permissions-manager">
         <div className="loading-spinner">
-          <div className="spinner"></div>
-          <p>Loading users from database...</p>
+          <div className="loading-dots">
+            <div className="dot"></div>
+            <div className="dot"></div>
+            <div className="dot"></div>
+          </div>
         </div>
       </div>
     )

@@ -285,8 +285,12 @@ const PlatformAdminDashboard = () => {
     return (
       <div className="platform-admin-dashboard">
         <div className="loading-spinner">
-          <div className="spinner"></div>
-          <p>Loading Platform Admin Dashboard...</p>
+          <div className="loading-dots">
+            <div className="dot"></div>
+            <div className="dot"></div>
+            <div className="dot"></div>
+          </div>
+          <p>Loading...</p>
         </div>
       </div>
     )
@@ -300,13 +304,27 @@ const PlatformAdminDashboard = () => {
       />
       
       <main className="dashboard-main">
-        <div className="dashboard-header">
-          <h1>Platform Administration Dashboard</h1>
-          <div className="header-actions">
-            <button className="btn btn-primary">Send Alert</button>
-            <button className="btn btn-secondary">Export Report</button>
+        {/* Simple Header */}
+        <header className="admin-header">
+          <div className="header-container">
+            <div className="header-left">
+              <h1 className="dashboard-title">Platform Administration</h1>
+              <p className="dashboard-subtitle">System Management & Monitoring</p>
+            </div>
+            <div className="header-right">
+              <div className="header-actions">
+                <button className="header-btn primary">
+                  <span>🚨</span>
+                  Send Alert
+                </button>
+                <button className="header-btn secondary">
+                  <span>📊</span>
+                  Export Report
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        </header>
 
         <div className="dashboard-content">
           {renderContent()}

@@ -3,10 +3,11 @@ import { useState, useEffect } from 'react'
 import './styles/theme.css'
 
 import HomePage from './pages/HomePage'
-import { LoginForm, ProtectedRoute, DashboardRedirect, PendingApproval, TrustTeamsLoader } from './components/shared'
+import { ProtectedRoute, DashboardRedirect, PendingApproval, TrustTeamsLoader } from './components/shared'
+import LoginFormNew from './components/shared/LoginFormNew'
+import SignupFormNew from './components/shared/SignupFormNew'
 import IcmDashboard from './components/icm/IcmDashboard'
 import StudentDashboard from './pages/StudentDashboard'
-import Signup from './pages/Signup'
 import { PlatformAdminDashboard, PlatformAdminRoute } from './components/platform-admin'
 import OpportunitiesList from './pages/OpportunitiesList'
 import OpportunityForm from './pages/OpportunityForm'
@@ -53,8 +54,8 @@ function App() {
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<LoginForm onSubmit={(creds)=>console.log('submit', creds)} />} />
-          <Route path="/signup" element={<Signup />} />
+          <Route path="/login" element={<LoginFormNew onSubmit={(creds)=>console.log('submit', creds)} />} />
+          <Route path="/signup" element={<SignupFormNew onSubmit={(creds)=>console.log('signup', creds)} />} />
           <Route path="/pending-approval" element={<PendingApproval />} />
           <Route path="/verify-email/:token" element={<EmailVerification />} />
 
